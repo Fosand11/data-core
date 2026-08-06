@@ -1,189 +1,70 @@
 <script setup lang="ts">
-import AppLogo from '@/components/AppLogo.vue';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import {
-    NavigationMenu,
-    NavigationMenuItem,
-    NavigationMenuLink,
-    NavigationMenuList,
-    navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import UserMenuContent from '@/components/UserMenuContent.vue';
-import { getInitials } from '@/composables/useInitials';
-import type { BreadcrumbItem, NavItem, SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-vue-next';
+import AppButton from '@/components/AppButton.vue';
+import MobileNavigation from '@/components/MobileNavigation.vue';
+import TenantSwitcher from '@/components/TenantSwitcher.vue';
+import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
+import { Bell, Plus, Search } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-interface Props {
-    breadcrumbs?: BreadcrumbItem[];
-}
-
-const props = withDefaults(defineProps<Props>(), {
-    breadcrumbs: () => [],
-});
-
-const page = usePage<SharedData>();
-const auth = computed(() => page.props.auth);
-
-const isCurrentRoute = (url: string) => {
-    return page.url === url;
-};
-
-const activeItemStyles = computed(() => (url: string) => (isCurrentRoute(url) ? 'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100' : ''));
-
-const mainNavItems: NavItem[] = [
+const props = withDefaults(
+    defineProps<{
+        breadcrumbs?: BreadcrumbItem[];
+        currentTenant?: CurrentTenant | null;
+        tenants?: TenantOption[];
+    }>(),
     {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutGrid,
+        breadcrumbs: () => [],
+        currentTenant: null,
+        tenants: () => [],
     },
-];
+);
 
-const rightNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits',
-        icon: BookOpen,
-    },
-];
+const pageTitle = computed(() => props.breadcrumbs.at(-1)?.title ?? 'Inicio');
 </script>
 
 <template>
-    <div>
-        <div class="border-b border-sidebar-border/80">
-            <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
-                <!-- Mobile Menu -->
-                <div class="lg:hidden">
-                    <Sheet>
-                        <SheetTrigger :as-child="true">
-                            <Button variant="ghost" size="icon" class="mr-2 h-9 w-9">
-                                <Menu class="h-5 w-5" />
-                            </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" class="w-[300px] p-6">
-                            <SheetTitle class="sr-only">Navigation Menu</SheetTitle>
-                            <SheetHeader class="flex justify-start text-left">
-                                <AppLogoIcon class="size-6 fill-current text-black dark:text-white" />
-                            </SheetHeader>
-                            <div class="flex h-full flex-1 flex-col justify-between space-y-4 py-6">
-                                <nav class="-mx-3 space-y-1">
-                                    <Link
-                                        v-for="item in mainNavItems"
-                                        :key="item.title"
-                                        :href="item.href"
-                                        class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
-                                        :class="activeItemStyles(item.href)"
-                                    >
-                                        <component v-if="item.icon" :is="item.icon" class="h-5 w-5" />
-                                        {{ item.title }}
-                                    </Link>
-                                </nav>
-                                <div class="flex flex-col space-y-4">
-                                    <a
-                                        v-for="item in rightNavItems"
-                                        :key="item.title"
-                                        :href="item.href"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        class="flex items-center space-x-2 text-sm font-medium"
-                                    >
-                                        <component v-if="item.icon" :is="item.icon" class="h-5 w-5" />
-                                        <span>{{ item.title }}</span>
-                                    </a>
-                                </div>
-                            </div>
-                        </SheetContent>
-                    </Sheet>
-                </div>
+    <header
+        class="sticky top-0 z-30 flex min-h-[4.5rem] shrink-0 flex-wrap items-center gap-3 border-b bg-card/95 px-4 backdrop-blur sm:px-6 min-[769px]:flex-nowrap"
+    >
+        <MobileNavigation />
 
-                <Link :href="route('dashboard')" class="flex items-center gap-x-2">
-                    <AppLogo class="hidden h-6 xl:block" />
-                </Link>
-
-                <!-- Desktop Menu -->
-                <div class="hidden h-full lg:flex lg:flex-1">
-                    <NavigationMenu class="ml-10 flex h-full items-stretch">
-                        <NavigationMenuList class="flex h-full items-stretch space-x-2">
-                            <NavigationMenuItem v-for="(item, index) in mainNavItems" :key="index" class="relative flex h-full items-center">
-                                <Link :href="item.href">
-                                    <NavigationMenuLink
-                                        :class="[navigationMenuTriggerStyle(), activeItemStyles(item.href), 'h-9 cursor-pointer px-3']"
-                                    >
-                                        <component v-if="item.icon" :is="item.icon" class="mr-2 h-4 w-4" />
-                                        {{ item.title }}
-                                    </NavigationMenuLink>
-                                </Link>
-                                <div class="absolute bottom-0 left-0 h-0.5 w-full translate-y-px bg-black dark:bg-white"></div>
-                            </NavigationMenuItem>
-                        </NavigationMenuList>
-                    </NavigationMenu>
-                </div>
-
-                <div class="ml-auto flex items-center space-x-2">
-                    <div class="relative flex items-center space-x-1">
-                        <Button variant="ghost" size="icon" class="group h-9 w-9 cursor-pointer">
-                            <Search class="size-5 opacity-80 group-hover:opacity-100" />
-                        </Button>
-
-                        <div class="hidden space-x-1 lg:flex">
-                            <template v-for="item in rightNavItems" :key="item.title">
-                                <TooltipProvider :delay-duration="0">
-                                    <Tooltip>
-                                        <TooltipTrigger>
-                                            <Button variant="ghost" size="icon" as-child class="group h-9 w-9 cursor-pointer">
-                                                <a :href="item.href" target="_blank" rel="noopener noreferrer">
-                                                    <span class="sr-only">{{ item.title }}</span>
-                                                    <component :is="item.icon" class="size-5 opacity-80 group-hover:opacity-100" />
-                                                </a>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{{ item.title }}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </template>
-                        </div>
-                    </div>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger :as-child="true">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
-                            >
-                                <Avatar class="size-8 overflow-hidden rounded-full">
-                                    <AvatarImage :src="auth.user.avatar ?? ''" :alt="auth.user.name" />
-                                    <AvatarFallback class="rounded-lg bg-neutral-200 font-semibold text-black dark:bg-neutral-700 dark:text-white">
-                                        {{ getInitials(auth.user?.name) }}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-56">
-                            <UserMenuContent :user="auth.user" />
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
+        <div class="hidden min-w-0 items-center gap-3 min-[769px]:flex">
+            <p class="truncate text-sm font-medium text-foreground">{{ pageTitle }}</p>
+            <span v-if="tenants.length" class="h-5 w-px bg-border" aria-hidden="true" />
+            <TenantSwitcher v-if="tenants.length" :current-tenant="currentTenant" :tenants="tenants" />
         </div>
 
-        <div v-if="props.breadcrumbs.length > 1" class="flex w-full border-b border-sidebar-border/70">
-            <div class="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
-                <Breadcrumbs :breadcrumbs="breadcrumbs" />
+        <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+            <div class="relative hidden lg:block">
+                <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <input
+                    type="search"
+                    class="h-10 w-72 rounded-lg border bg-background pl-9 pr-3 text-sm text-muted-foreground"
+                    placeholder="Buscar dashboards, fuentes..."
+                    aria-label="Búsqueda disponible próximamente"
+                    title="Búsqueda disponible próximamente"
+                    disabled
+                />
             </div>
+
+            <button
+                type="button"
+                class="relative flex size-11 items-center justify-center rounded-lg text-muted-foreground"
+                aria-label="Notificaciones disponibles próximamente"
+                title="Notificaciones disponibles próximamente"
+                disabled
+            >
+                <Bell class="size-5" aria-hidden="true" />
+            </button>
+
+            <AppButton class="hidden sm:inline-flex" disabled title="Disponible próximamente">
+                <Plus aria-hidden="true" />
+                Crear dashboard
+            </AppButton>
         </div>
-    </div>
+
+        <div v-if="tenants.length" class="w-full border-t py-3 min-[769px]:hidden">
+            <TenantSwitcher :current-tenant="currentTenant" :tenants="tenants" />
+        </div>
+    </header>
 </template>

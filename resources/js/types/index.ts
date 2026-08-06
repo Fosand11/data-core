@@ -14,6 +14,27 @@ export interface NavItem {
     href: string;
     icon?: LucideIcon;
     isActive?: boolean;
+    disabled?: boolean;
+    badge?: string;
+}
+
+export type TenantRole = 'owner' | 'admin' | 'member';
+
+export interface TenantOption {
+    name: string;
+    slug: string;
+    role: TenantRole;
+}
+
+export interface CurrentTenant {
+    name: string;
+    slug: string;
+}
+
+export interface DashboardSummary {
+    id: string;
+    name: string;
+    created_at: string;
 }
 
 export interface SharedData extends Record<string, unknown> {

@@ -15,7 +15,16 @@ defineProps<Props>();
         <SidebarGroupContent>
             <SidebarMenu>
                 <SidebarMenuItem v-for="item in items" :key="item.title">
-                    <SidebarMenuButton class="text-neutral-600 hover:text-neutral-800 dark:text-neutral-300 dark:hover:text-neutral-100" as-child>
+                    <SidebarMenuButton
+                        v-if="item.disabled"
+                        class="min-h-10 cursor-not-allowed text-muted-foreground opacity-70"
+                        :tooltip="`${item.title}: disponible próximamente`"
+                        aria-disabled="true"
+                    >
+                        <component :is="item.icon" aria-hidden="true" />
+                        <span>{{ item.title }}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuButton v-else class="text-muted-foreground hover:text-foreground" as-child :tooltip="item.title">
                         <a :href="item.href" target="_blank" rel="noopener noreferrer">
                             <component :is="item.icon" />
                             <span>{{ item.title }}</span>

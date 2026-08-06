@@ -11,12 +11,21 @@ const page = usePage<SharedData>();
 </script>
 
 <template>
-    <SidebarGroup class="px-2 py-0">
-        <SidebarGroupLabel>Platform</SidebarGroupLabel>
-        <SidebarMenu>
+    <SidebarGroup class="p-0">
+        <SidebarGroupLabel class="sr-only">Navegación principal</SidebarGroupLabel>
+        <SidebarMenu class="gap-1">
             <SidebarMenuItem v-for="item in items" :key="item.title">
-                <SidebarMenuButton as-child :is-active="item.href === page.url">
-                    <Link :href="item.href">
+                <SidebarMenuButton
+                    v-if="item.disabled"
+                    class="min-h-10 cursor-not-allowed text-muted-foreground opacity-70"
+                    :tooltip="`${item.title}: disponible próximamente`"
+                    aria-disabled="true"
+                >
+                    <component v-if="item.icon" :is="item.icon" aria-hidden="true" />
+                    <span>{{ item.title }}</span>
+                </SidebarMenuButton>
+                <SidebarMenuButton v-else as-child :is-active="item.href === page.url" :tooltip="item.title">
+                    <Link :href="item.href" :aria-current="item.href === page.url ? 'page' : undefined">
                         <component v-if="item.icon" :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>

@@ -12,7 +12,13 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Instrument Sans', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+            },
+            fontSize: {
+                display: ['3rem', { lineHeight: '1.08', fontWeight: '700' }],
+                h1: ['2.25rem', { lineHeight: '1.15', fontWeight: '700' }],
+                h2: ['1.75rem', { lineHeight: '1.2', fontWeight: '600' }],
+                h3: ['1.375rem', { lineHeight: '1.25', fontWeight: '600' }],
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -33,6 +39,8 @@ export default {
                 primary: {
                     DEFAULT: 'hsl(var(--primary))',
                     foreground: 'hsl(var(--primary-foreground))',
+                    hover: 'hsl(var(--primary-hover))',
+                    subtle: 'hsl(var(--primary-subtle))',
                 },
                 secondary: {
                     DEFAULT: 'hsl(var(--secondary))',
@@ -50,6 +58,10 @@ export default {
                     DEFAULT: 'hsl(var(--destructive))',
                     foreground: 'hsl(var(--destructive-foreground))',
                 },
+                success: 'hsl(var(--success))',
+                warning: 'hsl(var(--warning))',
+                error: 'hsl(var(--error))',
+                info: 'hsl(var(--info))',
                 border: 'hsl(var(--border))',
                 input: 'hsl(var(--input))',
                 ring: 'hsl(var(--ring))',
@@ -70,6 +82,10 @@ export default {
                     border: 'hsl(var(--sidebar-border))',
                     ring: 'hsl(var(--sidebar-ring))',
                 },
+            },
+            boxShadow: {
+                soft: '0 10px 30px -16px rgb(17 24 39 / 0.24)',
+                card: '0 1px 2px rgb(17 24 39 / 0.04), 0 8px 24px -18px rgb(17 24 39 / 0.18)',
             },
         },
     },

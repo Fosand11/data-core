@@ -13,12 +13,14 @@ defineProps<Props>();
 </script>
 
 <template>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 42" :class="className" v-bind="$attrs">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" :class="className" v-bind="$attrs" fill="none">
+        <path d="M12 3V6M12 18V21M3 12H6M18 12H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         <path
-            fill="currentColor"
-            fill-rule="evenodd"
-            clip-rule="evenodd"
-            d="M17.2 5.633 8.6.855 0 5.633v26.51l16.2 9 16.2-9v-8.442l7.6-4.223V9.856l-8.6-4.777-8.6 4.777V18.3l-5.6 3.111V5.633ZM38 18.301l-5.6 3.11v-6.157l5.6-3.11V18.3Zm-1.06-7.856-5.54 3.078-5.54-3.079 5.54-3.078 5.54 3.079ZM24.8 18.3v-6.157l5.6 3.111v6.158L24.8 18.3Zm-1 1.732 5.54 3.078-13.14 7.302-5.54-3.078 13.14-7.3v-.002Zm-16.2 7.89 7.6 4.222V38.3L2 30.966V7.92l5.6 3.111v16.892ZM8.6 9.3 3.06 6.222 8.6 3.143l5.54 3.08L8.6 9.3Zm21.8 15.51-13.2 7.334V38.3l13.2-7.334v-6.156ZM9.6 11.034l5.6-3.11v14.6l-5.6 3.11v-14.6Z"
+            d="M8.2 8.1C9.25 7.05 10.72 6.5 12.2 6.62C13.69 6.74 15.05 7.52 15.92 8.73C16.79 9.94 17.1 11.47 16.76 12.92C16.42 14.37 15.47 15.6 14.15 16.29C12.83 16.98 11.27 17.06 9.89 16.5C8.51 15.94 7.43 14.8 6.95 13.39"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
         />
+        <path d="M4.75 5.25L6.15 6.65M17.85 17.35L19.25 18.75M18.75 5.25L17.35 6.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
     </svg>
 </template>
