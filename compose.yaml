@@ -1,0 +1,151 @@
+name: ${COMPOSE_PROJECT_NAME}
+
+services:
+  app:
+    image: ${COMPOSE_PROJECT_NAME}-app:${APP_IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        PHP_IMAGE: ${PHP_IMAGE}
+        COMPOSER_IMAGE: ${COMPOSER_IMAGE}
+    env_file: .env
+    volumes:
+      - .:/var/www/html
+      - app_vendor:/var/www/html/vendor
+    depends_on:
+      saas-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "artisan", "about", "--only=environment"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  web:
+    image: ${NGINX_IMAGE}
+    ports:
+      - "${WEB_PORT}:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  worker:
+    image: ${COMPOSE_PROJECT_NAME}-app:${APP_IMAGE_TAG}
+    command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=90
+    env_file: .env
+    volumes:
+      - .:/var/www/html
+      - worker_vendor:/var/www/html/vendor
+    depends_on:
+      saas-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  saas-db:
+    image: ${POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${SAAS_DB_FORWARD_PORT}:5432"
+    volumes:
+      - saas_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE}
+    ports:
+      - "${REDIS_FORWARD_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  metabase-db:
+    image: ${POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: ${METABASE_DB_NAME}
+      POSTGRES_USER: ${METABASE_DB_USER}
+      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD}
+    ports:
+      - "${METABASE_DB_FORWARD_PORT}:5432"
+    volumes:
+      - metabase_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  analytics-db:
+    image: ${POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: ${ANALYTICS_DB_NAME}
+      POSTGRES_USER: ${ANALYTICS_DB_USER}
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD}
+    ports:
+      - "${ANALYTICS_DB_FORWARD_PORT}:5432"
+    volumes:
+      - analytics_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  metabase:
+    image: ${METABASE_IMAGE}
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${METABASE_DB_NAME}
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${METABASE_DB_USER}
+      MB_DB_PASS: ${METABASE_DB_PASSWORD}
+      MB_DB_HOST: metabase-db
+    ports:
+      - "${METABASE_PORT}:3000"
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  analytics_db_data:
+  app_vendor:
+  metabase_db_data:
+  redis_data:
+  saas_db_data:
+  worker_vendor:
