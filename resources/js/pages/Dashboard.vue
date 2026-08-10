@@ -6,9 +6,9 @@ import MetricCard from '@/components/MetricCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, DashboardSummary, SharedData, TenantOption } from '@/types';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { ArrowRight, Building2, Database, LayoutDashboard, Sparkles } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 defineProps<{
     currentTenant: CurrentTenant | null;
@@ -17,11 +17,18 @@ defineProps<{
 }>();
 
 const page = usePage<SharedData>();
-const firstName = computed(() => page.props.auth.user.name.trim().split(/s+/)[0] || page.props.auth.user.name);
+const firstName = computed(() => page.props.auth.user.name.trim().split(/\s+/)[0] || page.props.auth.user.name);
+const prompt = ref('');
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Inicio', href: '/dashboard' }];
 
 const promptSuggestions = ['Ventas por región', 'Comparar ingresos con el periodo anterior', 'Productos con menor rendimiento'];
+
+const createDashboard = () => {
+    if (prompt.value.trim().length < 10) return;
+
+    router.get(route('dashboards.create'), { prompt: prompt.value.trim() });
+};
 </script>
 
 <template>
@@ -40,36 +47,37 @@ const promptSuggestions = ['Ventas por región', 'Comparar ingresos con el perio
             <div v-else-if="dashboards.length === 0" class="flex flex-1 items-center px-4 py-12 sm:px-8 lg:py-16">
                 <EmptyState
                     title="Tu primer dashboard comienza con una pregunta"
-                    description="Cuando la generación esté disponible, podrás describir lo que necesitas y convertirlo en un dashboard para tu organización."
+                    description="Describe lo que necesitas y revisa una definición de dashboard creada por el generador de demostración."
                     :icon="Database"
                 >
-                    <div class="mx-auto max-w-3xl rounded-2xl border bg-card p-5 text-left shadow-soft sm:p-6">
+                    <form class="mx-auto max-w-3xl rounded-2xl border bg-card p-5 text-left shadow-soft sm:p-6" @submit.prevent="createDashboard">
                         <div class="flex items-center gap-2 text-sm font-semibold text-primary">
                             <Sparkles class="size-4" aria-hidden="true" />
                             InsightFlow AI Composer
-                            <StatusBadge variant="primary" class="ml-auto">Disponible próximamente</StatusBadge>
+                            <StatusBadge variant="primary" class="ml-auto">Demo</StatusBadge>
                         </div>
 
                         <label for="ai-prompt" class="sr-only">Describe el dashboard que necesitas</label>
                         <textarea
                             id="ai-prompt"
+                            v-model="prompt"
                             rows="3"
-                            class="mt-4 w-full resize-none rounded-xl border-0 bg-transparent p-0 text-base text-muted-foreground outline-none"
+                            maxlength="2000"
+                            class="mt-4 w-full resize-none rounded-xl border-0 bg-transparent p-0 text-base text-foreground outline-none placeholder:text-muted-foreground focus:ring-0"
                             placeholder="Ej.: Muéstrame las ventas por región del último trimestre"
-                            disabled
                         />
 
                         <div class="mt-5 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
                             <span class="inline-flex items-center gap-2 text-xs text-muted-foreground">
                                 <Database class="size-4" aria-hidden="true" />
-                                Las fuentes de datos estarán disponibles en una fase posterior
+                                Generador de demostración; no consulta una base de datos
                             </span>
-                            <AppButton size="sm" disabled title="Disponible próximamente">
-                                Generar dashboard
+                            <AppButton size="sm" type="submit" :disabled="prompt.trim().length < 10">
+                                Continuar
                                 <ArrowRight aria-hidden="true" />
                             </AppButton>
                         </div>
-                    </div>
+                    </form>
 
                     <div class="mx-auto mt-7 max-w-3xl text-left">
                         <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ideas de ejemplo</p>
@@ -79,8 +87,7 @@ const promptSuggestions = ['Ventas por región', 'Comparar ingresos con el perio
                                 :key="suggestion"
                                 type="button"
                                 class="min-h-14 rounded-xl border bg-card px-4 text-left text-sm font-medium text-foreground shadow-card disabled:cursor-not-allowed disabled:opacity-75"
-                                disabled
-                                title="Disponible próximamente"
+                                @click="prompt = suggestion"
                             >
                                 <Sparkles class="mb-2 size-4 text-primary" aria-hidden="true" />
                                 {{ suggestion }}
@@ -107,13 +114,16 @@ const promptSuggestions = ['Ventas por región', 'Comparar ingresos con el perio
 
                 <section class="mt-8 rounded-2xl bg-primary p-6 text-white shadow-soft sm:flex sm:items-center sm:justify-between sm:gap-8 lg:p-8">
                     <div>
-                        <StatusBadge class="bg-white/15 text-white">Generación con IA · Próximamente</StatusBadge>
+                        <StatusBadge class="bg-white/15 text-white">Generador de demostración</StatusBadge>
                         <h2 class="mt-3 text-xl font-semibold sm:text-h3">Crear dashboard con lenguaje natural</h2>
                         <p class="mt-2 max-w-2xl text-sm leading-6 text-indigo-100">
-                            La experiencia visual está preparada. La generación real se habilitará en una fase posterior.
+                            Crea una definición estructurada sin consultar datos ni conectarse todavía a OpenAI o Metabase.
                         </p>
                     </div>
-                    <AppButton class="mt-5 shrink-0 bg-white text-primary hover:bg-primary-subtle sm:mt-0" disabled>
+                    <AppButton
+                        class="mt-5 shrink-0 bg-white text-primary hover:bg-primary-subtle sm:mt-0"
+                        @click="router.get(route('dashboards.create'))"
+                    >
                         Crear con IA
                         <Sparkles aria-hidden="true" />
                     </AppButton>

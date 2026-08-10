@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import AppButton from '@/components/AppButton.vue';
 import MobileNavigation from '@/components/MobileNavigation.vue';
 import TenantSwitcher from '@/components/TenantSwitcher.vue';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
+import { Link } from '@inertiajs/vue3';
 import { Bell, Plus, Search } from 'lucide-vue-next';
 import { computed } from 'vue';
 
@@ -57,10 +59,10 @@ const pageTitle = computed(() => props.breadcrumbs.at(-1)?.title ?? 'Inicio');
                 <Bell class="size-5" aria-hidden="true" />
             </button>
 
-            <AppButton class="hidden sm:inline-flex" disabled title="Disponible próximamente">
+            <Link :href="route('dashboards.create')" :class="cn(buttonVariants(), 'hidden sm:inline-flex')">
                 <Plus aria-hidden="true" />
                 Crear dashboard
-            </AppButton>
+            </Link>
         </div>
 
         <div v-if="tenants.length" class="w-full border-t py-3 min-[769px]:hidden">

@@ -2,12 +2,7 @@
 
 namespace App\Domain\Ai\Contracts;
 
-interface DashboardSpecGenerator
-{
-    /**
-     * This boundary is intentionally not implemented during Phase 1.
-     *
-     * @return array<string, mixed>
-     */
-    public function generate(string $prompt): array;
-}
+/**
+ * @deprecated Kept as a compatibility alias for the Phase 1 boundary.
+ */
+interface DashboardSpecGenerator extends DashboardGenerator {}

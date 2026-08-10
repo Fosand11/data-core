@@ -22,8 +22,8 @@ const { state } = useSidebar();
 
 const mainNavItems: NavItem[] = [
     { title: 'Inicio', href: '/dashboard', icon: Home },
-    { title: 'Dashboards', href: '#dashboards', icon: BarChart3, disabled: true, badge: 'Próximamente' },
-    { title: 'Crear con IA', href: '#create', icon: Sparkles, disabled: true, badge: 'Próximamente' },
+    { title: 'Dashboards', href: '/dashboards', icon: BarChart3 },
+    { title: 'Crear con IA', href: '/dashboards/create', icon: Sparkles },
     { title: 'Fuentes de datos', href: '#sources', icon: Database, disabled: true },
     { title: 'Historial', href: '#history', icon: History, disabled: true },
     { title: 'Organización', href: '#organization', icon: Users, disabled: true },

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domain\Dashboards\Enums\DashboardStatus;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Tenancy\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -17,7 +18,24 @@ class DashboardFactory extends Factory
     {
         return [
             'tenant_id' => Tenant::factory(),
-            'name' => fake()->sentence(3),
+            'created_by' => null,
+            'title' => fake()->sentence(3),
+            'description' => fake()->sentence(),
+            'original_prompt' => fake()->sentence(),
+            'status' => DashboardStatus::Queued,
+            'spec_version' => null,
+            'dashboard_spec' => null,
+            'provider' => 'fake',
         ];
+    }
+
+    public function queued(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DashboardStatus::Queued,
+            'spec_version' => null,
+            'dashboard_spec' => null,
+            'provider' => 'fake',
+        ]);
     }
 }

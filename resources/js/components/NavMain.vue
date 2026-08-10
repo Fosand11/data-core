@@ -8,6 +8,8 @@ defineProps<{
 }>();
 
 const page = usePage<SharedData>();
+
+const isActive = (href: string) => page.url === href || (href !== '/dashboard' && page.url.startsWith(`${href}/`));
 </script>
 
 <template>
@@ -24,8 +26,8 @@ const page = usePage<SharedData>();
                     <component v-if="item.icon" :is="item.icon" aria-hidden="true" />
                     <span>{{ item.title }}</span>
                 </SidebarMenuButton>
-                <SidebarMenuButton v-else as-child :is-active="item.href === page.url" :tooltip="item.title">
-                    <Link :href="item.href" :aria-current="item.href === page.url ? 'page' : undefined">
+                <SidebarMenuButton v-else as-child :is-active="isActive(item.href)" :tooltip="item.title">
+                    <Link :href="item.href" :aria-current="isActive(item.href) ? 'page' : undefined">
                         <component v-if="item.icon" :is="item.icon" />
                         <span>{{ item.title }}</span>
                     </Link>

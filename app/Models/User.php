@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Tenancy\Models\Tenant;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -57,5 +60,21 @@ class User extends Authenticatable
         return $this->belongsToMany(Tenant::class)
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<Dashboard, $this>
+     */
+    public function dashboardsCreated(): HasMany
+    {
+        return $this->hasMany(Dashboard::class, 'created_by');
+    }
+
+    /**
+     * @return HasMany<DashboardGeneration, $this>
+     */
+    public function dashboardGenerationsRequested(): HasMany
+    {
+        return $this->hasMany(DashboardGeneration::class, 'requested_by');
     }
 }

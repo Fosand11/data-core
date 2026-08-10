@@ -82,14 +82,14 @@ class CurrentTenantTest extends TestCase
         $ownTenant = Tenant::factory()->create();
         $foreignTenant = Tenant::factory()->create();
         $user = User::factory()->ownerOf($ownTenant)->create();
-        Dashboard::factory()->for($ownTenant)->create(['name' => 'Own dashboard']);
-        Dashboard::factory()->for($foreignTenant)->create(['name' => 'Foreign dashboard']);
+        Dashboard::factory()->for($ownTenant)->create(['title' => 'Own dashboard']);
+        Dashboard::factory()->for($foreignTenant)->create(['title' => 'Foreign dashboard']);
 
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('dashboards', 1)
-                ->where('dashboards.0.name', 'Own dashboard'));
+                ->where('dashboards.0.title', 'Own dashboard'));
     }
 }

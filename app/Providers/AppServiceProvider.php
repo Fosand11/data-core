@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Providers\FakeDashboardGenerator;
+use App\Domain\Ai\Providers\UnsupportedDashboardGenerator;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Policies\DashboardPolicy;
 use App\Domain\Tenancy\CurrentTenant;
@@ -16,6 +19,13 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(CurrentTenant::class, fn () => new CurrentTenant);
+        $this->app->bind(DashboardGenerator::class, function (): DashboardGenerator {
+            $driver = config('dashboard-ai.driver');
+
+            return is_string($driver) && strtolower(trim($driver)) === 'fake'
+                ? new FakeDashboardGenerator
+                : new UnsupportedDashboardGenerator;
+        });
     }
 
     /**

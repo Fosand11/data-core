@@ -21,8 +21,18 @@ class DashboardController extends Controller
         if ($tenant !== null) {
             Gate::authorize('viewAny', Dashboard::class);
             $dashboards = $tenant->dashboards()
+                ->with('creator:id,name')
                 ->latest()
-                ->get(['id', 'name', 'created_at']);
+                ->get()
+                ->map(fn (Dashboard $dashboard): array => [
+                    'id' => $dashboard->getKey(),
+                    'title' => $dashboard->title,
+                    'status' => $dashboard->status->value,
+                    'created_at' => $dashboard->created_at->toIso8601String(),
+                    'author' => $dashboard->creator === null ? null : [
+                        'name' => $dashboard->creator->name,
+                    ],
+                ]);
         }
 
         $tenants = $request->user()

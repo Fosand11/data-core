@@ -33,8 +33,85 @@ export interface CurrentTenant {
 
 export interface DashboardSummary {
     id: string;
-    name: string;
+    title: string;
+    status: DashboardStatus;
     created_at: string;
+    author: { name: string } | null;
+}
+
+export type DashboardStatus = 'queued' | 'generating' | 'ready' | 'failed' | 'archived';
+export type DashboardGenerationStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type DashboardVisualizationType = 'kpi' | 'bar' | 'line' | 'table';
+
+export interface DashboardMetric {
+    field: string;
+    aggregation: 'sum' | 'avg' | 'count' | 'min' | 'max';
+    alias: string;
+    format?: 'currency' | 'number' | 'percent' | 'integer';
+}
+
+export interface DashboardDimension {
+    field: string;
+}
+
+export interface DashboardFilter {
+    field: string;
+    operator: string;
+    value: unknown;
+}
+
+export interface DashboardOrder {
+    field: string;
+    direction: 'asc' | 'desc';
+}
+
+export interface DashboardVisualization {
+    key: string;
+    title: string;
+    type: DashboardVisualizationType;
+    query: {
+        metrics: DashboardMetric[];
+        dimensions: DashboardDimension[];
+        filters: DashboardFilter[];
+        order_by: DashboardOrder[];
+        limit: number;
+    };
+    display: Record<string, boolean | string | string[]>;
+    layout: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+}
+
+export interface DashboardSpec {
+    version: '1.0';
+    title: string;
+    description: string;
+    dataset: string;
+    global_filters: DashboardFilter[];
+    visualizations: DashboardVisualization[];
+    layout: { columns: 12 };
+}
+
+export interface DashboardDetail extends DashboardSummary {
+    description: string | null;
+    original_prompt: string | null;
+    provider: string | null;
+    spec_version: string | null;
+    dashboard_spec: DashboardSpec | null;
+    error_message: string | null;
+    generation_started_at: string | null;
+    generation_completed_at: string | null;
+    generation: {
+        id: string;
+        status: DashboardGenerationStatus;
+        provider: string;
+        started_at: string | null;
+        completed_at: string | null;
+        error_message: string | null;
+    } | null;
 }
 
 export interface SharedData extends Record<string, unknown> {
