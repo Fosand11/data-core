@@ -51,42 +51,44 @@ html {
     }
 
     .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 6.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
+        --background: 240 24% 7%;
+        --foreground: 226 31% 92%;
+        --card: 240 20% 10%;
+        --card-foreground: 226 31% 92%;
+        --popover: 240 20% 11%;
+        --popover-foreground: 226 31% 92%;
+        --primary: 243 75% 66%;
+        --primary-hover: 243 79% 72%;
+        --primary-subtle: 243 35% 18%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 240 16% 16%;
+        --secondary-foreground: 226 31% 92%;
+        --muted: 240 14% 15%;
+        --muted-foreground: 223 13% 65%;
+        --accent: 243 35% 18%;
+        --accent-foreground: 239 84% 80%;
         --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 98%;
         --success: 160 84% 39%;
         --warning: 38 92% 50%;
         --error: 0 72% 51%;
         --info: 217 91% 60%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
+        --border: 240 14% 20%;
+        --input: 240 14% 23%;
+        --ring: 243 75% 70%;
         --chart-1: 220 70% 50%;
         --chart-2: 160 60% 45%;
         --chart-3: 30 80% 55%;
         --chart-4: 280 65% 60%;
         --chart-5: 340 75% 55%;
-        --sidebar-background: 0 0% 7%;
-        --sidebar-foreground: 0 0% 95.9%;
-        --sidebar-primary: 360, 100%, 100%;
+        --sidebar-background: 241 39% 10%;
+        --sidebar-foreground: 226 27% 82%;
+        --sidebar-primary: 243 75% 66%;
         --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 0 0% 15.9%;
-        --sidebar-accent-foreground: 240 4.8% 95.9%;
-        --sidebar-border: 0 0% 15.9%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+        --sidebar-accent: 243 42% 20%;
+        --sidebar-accent-foreground: 226 100% 97%;
+        --sidebar-border: 243 26% 22%;
+        --sidebar-ring: 244 100% 76%;
     }
 }
 
@@ -97,10 +99,150 @@ html {
 
     body {
         @apply bg-background text-foreground antialiased;
+        background-image:
+            radial-gradient(circle at 78% -10%, hsl(var(--primary) / 0.07), transparent 32rem),
+            linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+            linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+        background-size:
+            auto,
+            32px 32px,
+            32px 32px;
     }
 
     :focus-visible {
         outline: 2px solid hsl(var(--ring));
         outline-offset: 2px;
+    }
+}
+
+@layer components {
+    .insight-sidebar {
+        --sidebar-background: 241 39% 12%;
+        --sidebar-foreground: 226 27% 82%;
+        --sidebar-accent: 243 42% 20%;
+        --sidebar-accent-foreground: 226 100% 97%;
+        --sidebar-border: 243 26% 22%;
+        --sidebar-ring: 244 100% 76%;
+    }
+
+    .app-canvas {
+        position: relative;
+        isolation: isolate;
+    }
+
+    .app-canvas::before {
+        position: fixed;
+        inset: 4.5rem 0 auto auto;
+        z-index: -1;
+        width: min(42vw, 38rem);
+        height: 24rem;
+        content: '';
+        pointer-events: none;
+        background: radial-gradient(ellipse at top right, hsl(var(--primary) / 0.085), transparent 70%);
+    }
+
+    .editorial-kicker {
+        @apply inline-flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.2em] text-primary;
+    }
+
+    .editorial-kicker::before {
+        width: 1.75rem;
+        height: 1px;
+        content: '';
+        background: currentColor;
+    }
+
+    .insight-panel {
+        @apply relative overflow-hidden border border-border/80 bg-card/90 shadow-card backdrop-blur-sm;
+        border-radius: 1.25rem;
+    }
+
+    .insight-panel::after {
+        position: absolute;
+        inset: 0;
+        content: '';
+        pointer-events: none;
+        border-radius: inherit;
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+    }
+
+    .dark .insight-panel::after {
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    }
+
+    .motion-reveal {
+        animation: insight-reveal 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .motion-reveal-delayed {
+        animation: insight-reveal 520ms 90ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .motion-reveal-late {
+        animation: insight-reveal 520ms 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .motion-soft-pulse {
+        animation: insight-soft-pulse 3.6s ease-in-out infinite;
+    }
+
+    .dashboard-grid > * {
+        animation: insight-reveal 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .dashboard-grid > :nth-child(2) {
+        animation-delay: 60ms;
+    }
+
+    .dashboard-grid > :nth-child(3) {
+        animation-delay: 120ms;
+    }
+
+    .dashboard-grid > :nth-child(4) {
+        animation-delay: 180ms;
+    }
+
+    .dashboard-grid > :nth-child(5) {
+        animation-delay: 240ms;
+    }
+
+    .dashboard-grid > :nth-child(6) {
+        animation-delay: 300ms;
+    }
+}
+
+@keyframes insight-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes insight-soft-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(0.96);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.04);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }
