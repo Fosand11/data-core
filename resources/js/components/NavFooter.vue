@@ -17,7 +17,7 @@ defineProps<Props>();
                 <SidebarMenuItem v-for="item in items" :key="item.title">
                     <SidebarMenuButton
                         v-if="item.disabled"
-                        class="min-h-10 cursor-not-allowed text-muted-foreground opacity-70"
+                        class="min-h-10 cursor-not-allowed rounded-xl text-indigo-200/45 opacity-70"
                         :tooltip="`${item.title}: disponible próximamente`"
                         aria-disabled="true"
                     >

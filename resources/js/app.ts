@@ -5,9 +5,9 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
+import { initializeTheme } from './composables/useAppearance';
 
-// This visual stage supports the light InsightFlow design only.
-document.documentElement.classList.remove('dark');
+initializeTheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

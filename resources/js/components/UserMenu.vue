@@ -21,11 +21,11 @@ withDefaults(
         <DropdownMenuTrigger as-child>
             <button
                 type="button"
-                class="flex min-h-12 w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                class="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.035] p-2 text-left text-indigo-50 transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                 aria-label="Abrir menú de usuario"
             >
                 <UserInfo :user="user" :compact="compact" />
-                <ChevronsUpDown v-if="!compact" class="ml-auto size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <ChevronsUpDown v-if="!compact" class="ml-auto size-4 shrink-0 text-indigo-200/50" aria-hidden="true" />
             </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent class="w-64 rounded-xl" side="top" align="end" :side-offset="8">

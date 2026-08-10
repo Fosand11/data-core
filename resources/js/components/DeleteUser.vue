@@ -3,7 +3,6 @@ import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 // Components
-import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,45 +42,51 @@ const closeModal = () => {
 </script>
 
 <template>
-    <div class="space-y-6">
-        <HeadingSmall title="Delete account" description="Delete your account and all of its resources" />
-        <div class="space-y-4 rounded-lg border border-red-100 bg-red-50 p-4 dark:border-red-200/10 dark:bg-red-700/10">
-            <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
-                <p class="font-medium">Warning</p>
-                <p class="text-sm">Please proceed with caution, this cannot be undone.</p>
+    <section class="overflow-hidden rounded-[1.25rem] border border-error/15 bg-card" aria-labelledby="delete-account-title">
+        <div class="grid gap-5 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+            <div>
+                <p class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-error">Zona irreversible</p>
+                <h2 id="delete-account-title" class="mt-2 text-xl font-semibold tracking-tight text-foreground">Eliminar esta cuenta</h2>
+                <p class="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                    Esta acción elimina permanentemente tu cuenta y no se puede deshacer.
+                </p>
             </div>
             <Dialog>
                 <DialogTrigger as-child>
-                    <Button variant="destructive">Delete account</Button>
+                    <Button class="rounded-full" variant="destructive">Eliminar cuenta</Button>
                 </DialogTrigger>
                 <DialogContent>
                     <form class="space-y-6" @submit="deleteUser">
                         <DialogHeader class="space-y-3">
-                            <DialogTitle>Are you sure you want to delete your account?</DialogTitle>
+                            <DialogTitle>¿Quieres eliminar tu cuenta?</DialogTitle>
                             <DialogDescription>
-                                Once your account is deleted, all of its resources and data will also be permanently deleted. Please enter your
-                                password to confirm you would like to permanently delete your account.
+                                La cuenta y sus datos se eliminarán permanentemente. Escribe tu contraseña para confirmar esta decisión.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div class="grid gap-2">
-                            <Label for="password" class="sr-only">Password</Label>
-                            <Input id="password" type="password" name="password" ref="passwordInput" v-model="form.password" placeholder="Password" />
+                            <Label for="password" class="sr-only">Contraseña</Label>
+                            <Input
+                                id="password"
+                                ref="passwordInput"
+                                v-model="form.password"
+                                type="password"
+                                name="password"
+                                placeholder="Contraseña"
+                            />
                             <InputError :message="form.errors.password" />
                         </div>
 
                         <DialogFooter>
                             <DialogClose as-child>
-                                <Button variant="secondary" @click="closeModal"> Cancel </Button>
+                                <Button variant="secondary" @click="closeModal">Cancelar</Button>
                             </DialogClose>
 
-                            <Button variant="destructive" :disabled="form.processing">
-                                <button type="submit">Delete account</button>
-                            </Button>
+                            <Button type="submit" variant="destructive" :disabled="form.processing">Eliminar definitivamente</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
         </div>
-    </div>
+    </section>
 </template>

@@ -34,24 +34,33 @@ const footerNavItems: NavItem[] = [{ title: 'Centro de ayuda', href: '#help', ic
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="sidebar" class="border-r bg-card">
-        <SidebarHeader class="h-[4.5rem] justify-center border-b px-4">
+    <Sidebar collapsible="icon" variant="floating" class="insight-sidebar">
+        <SidebarHeader class="h-[5.25rem] justify-center px-3 pt-3">
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child class="hover:bg-transparent data-[state=open]:bg-transparent">
+                    <SidebarMenuButton
+                        size="lg"
+                        as-child
+                        class="min-h-14 rounded-2xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] data-[state=open]:bg-transparent"
+                    >
                         <Link :href="route('dashboard')" aria-label="InsightFlow, ir al inicio">
-                            <AppLogo :compact="state === 'collapsed'" />
+                            <AppLogo :compact="state === 'collapsed'" inverse />
+                            <span
+                                v-if="state !== 'collapsed'"
+                                class="motion-soft-pulse ml-auto size-1.5 rounded-full bg-indigo-300"
+                                aria-hidden="true"
+                            />
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent class="px-2 py-4">
+        <SidebarContent class="px-2 py-5">
             <NavMain :items="mainNavItems" />
         </SidebarContent>
 
-        <SidebarFooter class="border-t p-3">
+        <SidebarFooter class="border-t border-white/10 p-3">
             <NavFooter :items="footerNavItems" />
             <UserMenu :user="page.props.auth.user" :compact="state === 'collapsed'" />
         </SidebarFooter>

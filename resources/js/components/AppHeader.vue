@@ -5,7 +5,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { Bell, Plus, Search } from 'lucide-vue-next';
+import { Command, Plus, Search } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const props = withDefaults(
@@ -26,13 +26,16 @@ const pageTitle = computed(() => props.breadcrumbs.at(-1)?.title ?? 'Inicio');
 
 <template>
     <header
-        class="sticky top-0 z-30 flex min-h-[4.5rem] shrink-0 flex-wrap items-center gap-3 border-b bg-card/95 px-4 backdrop-blur sm:px-6 min-[769px]:flex-nowrap"
+        class="sticky top-0 z-30 flex min-h-[4.5rem] shrink-0 flex-wrap items-center gap-3 border-b border-border/70 bg-background/85 px-4 backdrop-blur-xl sm:px-6 min-[769px]:flex-nowrap"
     >
         <MobileNavigation />
 
-        <div class="hidden min-w-0 items-center gap-3 min-[769px]:flex">
-            <p class="truncate text-sm font-medium text-foreground">{{ pageTitle }}</p>
-            <span v-if="tenants.length" class="h-5 w-px bg-border" aria-hidden="true" />
+        <div class="hidden min-w-0 items-center gap-4 min-[769px]:flex">
+            <div class="min-w-0">
+                <span class="block text-[0.6rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Vista actual</span>
+                <p class="truncate text-sm font-semibold text-foreground">{{ pageTitle }}</p>
+            </div>
+            <span v-if="tenants.length" class="h-7 w-px bg-border" aria-hidden="true" />
             <TenantSwitcher v-if="tenants.length" :current-tenant="currentTenant" :tenants="tenants" />
         </div>
 
@@ -41,27 +44,30 @@ const pageTitle = computed(() => props.breadcrumbs.at(-1)?.title ?? 'Inicio');
                 <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <input
                     type="search"
-                    class="h-10 w-72 rounded-lg border bg-background pl-9 pr-3 text-sm text-muted-foreground"
-                    placeholder="Buscar dashboards, fuentes..."
+                    class="h-10 w-64 rounded-full border border-border/80 bg-card/70 pl-9 pr-12 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.8)] transition-colors hover:border-primary/25"
+                    placeholder="Buscar en el estudio..."
                     aria-label="Búsqueda disponible próximamente"
                     title="Búsqueda disponible próximamente"
                     disabled
                 />
+                <span
+                    class="pointer-events-none absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-md border bg-background px-1.5 py-1 text-[0.6rem] font-semibold text-muted-foreground"
+                >
+                    <Command class="size-2.5" aria-hidden="true" /> K
+                </span>
             </div>
 
-            <button
-                type="button"
-                class="relative flex size-11 items-center justify-center rounded-lg text-muted-foreground"
-                aria-label="Notificaciones disponibles próximamente"
-                title="Notificaciones disponibles próximamente"
-                disabled
+            <Link
+                :href="route('dashboards.create')"
+                :class="
+                    cn(
+                        buttonVariants(),
+                        'hidden rounded-full px-5 shadow-[0_8px_22px_-10px_hsl(var(--primary))] transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex',
+                    )
+                "
             >
-                <Bell class="size-5" aria-hidden="true" />
-            </button>
-
-            <Link :href="route('dashboards.create')" :class="cn(buttonVariants(), 'hidden sm:inline-flex')">
                 <Plus aria-hidden="true" />
-                Crear dashboard
+                Nueva pregunta
             </Link>
         </div>
 

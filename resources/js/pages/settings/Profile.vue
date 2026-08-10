@@ -3,7 +3,6 @@ import { TransitionRoot } from '@headlessui/vue';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 import DeleteUser from '@/components/DeleteUser.vue';
-import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +21,7 @@ defineProps<Props>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
+        title: 'Identidad',
         href: '/settings/profile',
     },
 ];
@@ -44,53 +43,64 @@ const submit = () => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Profile settings" />
+        <Head title="Identidad" />
 
         <SettingsLayout>
-            <div class="flex flex-col space-y-6">
-                <HeadingSmall title="Profile information" description="Update your name and email address" />
+            <section class="insight-panel p-6 sm:p-8" aria-labelledby="profile-title">
+                <div class="border-b border-border/70 pb-5">
+                    <p class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-primary">Identidad visible</p>
+                    <h2 id="profile-title" class="mt-2 text-2xl font-semibold tracking-tight text-foreground">Cómo te reconoce el espacio</h2>
+                    <p class="mt-2 text-sm leading-6 text-muted-foreground">Estos datos aparecen en tu cuenta y en los recursos que creas.</p>
+                </div>
 
-                <form @submit.prevent="submit" class="space-y-6">
+                <form class="mt-6 space-y-6" @submit.prevent="submit">
                     <div class="grid gap-2">
-                        <Label for="name">Name</Label>
-                        <Input id="name" class="mt-1 block w-full" v-model="form.name" required autocomplete="name" placeholder="Full name" />
+                        <Label for="name">Nombre</Label>
+                        <Input
+                            id="name"
+                            v-model="form.name"
+                            class="mt-1 block h-12 w-full rounded-xl bg-background"
+                            required
+                            autocomplete="name"
+                            placeholder="Tu nombre completo"
+                        />
                         <InputError class="mt-2" :message="form.errors.name" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="email">Email address</Label>
+                        <Label for="email">Correo electrónico</Label>
                         <Input
                             id="email"
                             type="email"
-                            class="mt-1 block w-full"
+                            class="mt-1 block h-12 w-full rounded-xl bg-background"
                             v-model="form.email"
                             required
                             autocomplete="username"
-                            placeholder="Email address"
+                            placeholder="tu@correo.com"
                         />
                         <InputError class="mt-2" :message="form.errors.email" />
                     </div>
 
                     <div v-if="mustVerifyEmail && !user.email_verified_at">
-                        <p class="mt-2 text-sm text-neutral-800">
-                            Your email address is unverified.
+                        <p class="mt-2 text-sm text-foreground">
+                            Tu correo todavía no ha sido verificado.
                             <Link
                                 :href="route('verification.send')"
                                 method="post"
                                 as="button"
-                                class="focus:outline-hidden rounded-md text-sm text-neutral-600 underline hover:text-neutral-900 focus:ring-2 focus:ring-offset-2"
+                                class="rounded-md text-sm font-medium text-primary underline underline-offset-4 hover:text-primary-hover focus:ring-2 focus:ring-offset-2"
                             >
-                                Click here to re-send the verification email.
+                                Reenviar correo de verificación.
                             </Link>
                         </p>
 
-                        <div v-if="status === 'verification-link-sent'" class="mt-2 text-sm font-medium text-green-600">
-                            A new verification link has been sent to your email address.
+                        <div v-if="status === 'verification-link-sent'" class="mt-2 text-sm font-medium text-success">
+                            Enviamos un nuevo enlace de verificación a tu correo.
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-4">
-                        <Button :disabled="form.processing">Save</Button>
+                    <div class="flex items-center gap-4 border-t border-border/70 pt-5">
+                        <Button class="rounded-full px-5" :disabled="form.processing">Guardar cambios</Button>
 
                         <TransitionRoot
                             :show="form.recentlySuccessful"
@@ -99,11 +109,11 @@ const submit = () => {
                             leave="transition ease-in-out"
                             leave-to="opacity-0"
                         >
-                            <p class="text-sm text-neutral-600">Saved.</p>
+                            <p class="text-sm text-success">Cambios guardados.</p>
                         </TransitionRoot>
                     </div>
                 </form>
-            </div>
+            </section>
 
             <DeleteUser />
         </SettingsLayout>

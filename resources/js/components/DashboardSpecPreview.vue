@@ -30,9 +30,10 @@ const visualizationIcon = (visualization: DashboardVisualization) => {
 
 <template>
     <section aria-labelledby="spec-preview-title">
-        <div class="flex flex-wrap items-end justify-between gap-3">
+        <div class="flex flex-wrap items-end justify-between gap-3 border-b border-border/70 pb-5">
             <div>
-                <h2 id="spec-preview-title" class="text-xl font-semibold text-foreground">Vista previa de la definición</h2>
+                <p class="editorial-kicker">Estructura resultante</p>
+                <h2 id="spec-preview-title" class="mt-2 text-2xl font-semibold tracking-tight text-foreground">La anatomía del dashboard</h2>
                 <p class="mt-1 text-sm text-muted-foreground">
                     Dataset <code class="rounded bg-muted px-1.5 py-0.5 text-foreground">{{ spec.dataset }}</code> · No se han consultado datos.
                 </p>
@@ -40,7 +41,7 @@ const visualizationIcon = (visualization: DashboardVisualization) => {
             <StatusBadge variant="primary">DashboardSpec {{ spec.version }}</StatusBadge>
         </div>
 
-        <div v-if="spec.global_filters.length" class="mt-5 rounded-xl border bg-card p-4">
+        <div v-if="spec.global_filters.length" class="mt-5 rounded-2xl border bg-card p-4 shadow-card">
             <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filtros globales</p>
             <div class="mt-2 flex flex-wrap gap-2">
                 <StatusBadge v-for="filter in spec.global_filters" :key="`${filter.field}-${filter.operator}`">
@@ -49,18 +50,20 @@ const visualizationIcon = (visualization: DashboardVisualization) => {
             </div>
         </div>
 
-        <div class="mt-5 grid gap-5 lg:grid-cols-2">
+        <div class="dashboard-grid mt-5 grid gap-5 lg:grid-cols-2">
             <article
                 v-for="visualization in spec.visualizations"
                 :key="visualization.key"
-                class="overflow-hidden rounded-xl border bg-card shadow-card"
+                class="group overflow-hidden rounded-[1.25rem] border bg-card shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-soft"
             >
                 <header class="flex items-start justify-between gap-4 border-b p-5">
                     <div>
                         <h3 class="font-semibold text-foreground">{{ visualization.title }}</h3>
                         <p class="mt-1 text-xs text-muted-foreground">Clave: {{ visualization.key }}</p>
                     </div>
-                    <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-subtle text-primary">
+                    <div
+                        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-subtle text-primary transition-transform duration-300 group-hover:-rotate-6"
+                    >
                         <component :is="visualizationIcon(visualization)" class="size-5" aria-hidden="true" />
                     </div>
                 </header>
