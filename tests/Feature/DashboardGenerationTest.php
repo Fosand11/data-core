@@ -119,6 +119,24 @@ class DashboardGenerationTest extends TestCase
         $this->assertNotSame($tenant->getKey(), $foreignTenant->getKey());
     }
 
+    public function test_generation_requests_are_rate_limited_per_user(): void
+    {
+        Queue::fake();
+        config()->set('dashboard-ai.rate_limit.per_minute', 2);
+        [, $user] = $this->ownerContext();
+        [, $otherUser] = $this->ownerContext();
+        $payload = ['prompt' => 'Muéstrame las ventas por región del último trimestre.'];
+
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertStatus(429);
+
+        $this->assertDatabaseCount('dashboards', 2);
+
+        $this->actingAs($otherUser)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->assertDatabaseCount('dashboards', 3);
+    }
+
     public function test_real_job_transitions_from_queued_through_generating_to_ready(): void
     {
         [$tenant, $user] = $this->ownerContext();
@@ -151,7 +169,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertTrue($observingGenerator->observedGenerating);
         $this->assertSame(DashboardStatus::Ready, $dashboard->refresh()->status);
-        $this->assertSame('1.0', $dashboard->spec_version);
+        $this->assertSame('1.1', $dashboard->spec_version);
         $this->assertNotNull($dashboard->dashboard_spec);
         $this->assertSame(DashboardGenerationStatus::Completed, $generation->refresh()->status);
         $this->assertSame($dashboard->dashboard_spec, $generation->validated_spec);
