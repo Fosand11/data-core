@@ -5,6 +5,8 @@ namespace App\Domain\Ai\Validation;
 use App\Domain\Ai\Catalogs\DemoSalesDatasetCatalog;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Exceptions\InvalidDashboardSpecException;
+use DateTimeImmutable;
+use Exception;
 
 final class DashboardSpecValidator
 {
@@ -27,7 +29,15 @@ final class DashboardSpecValidator
         'previous_period',
     ];
 
-    private const VISUALIZATION_TYPES = ['kpi', 'bar', 'line', 'table'];
+    /**
+     * Version 1.0 dashboards stay valid; 1.1 adds the area and pie types.
+     *
+     * @var array<string, list<string>>
+     */
+    private const TYPES_BY_VERSION = [
+        '1.0' => ['kpi', 'bar', 'line', 'table'],
+        '1.1' => ['kpi', 'bar', 'line', 'area', 'pie', 'table'],
+    ];
 
     private const FORMATS = ['currency', 'number', 'percent', 'integer'];
 
@@ -48,9 +58,11 @@ final class DashboardSpecValidator
             '$',
         );
 
-        if ($definition['version'] !== '1.0') {
-            $this->fail('$.version must be the supported version "1.0".');
+        if (! is_string($definition['version']) || ! array_key_exists($definition['version'], self::TYPES_BY_VERSION)) {
+            $this->fail('$.version must be a supported version ("1.0" or "1.1").');
         }
+
+        $allowedTypes = self::TYPES_BY_VERSION[$definition['version']];
 
         $this->assertText($definition['title'], '$.title', 1, 120);
         $this->assertText($definition['description'], '$.description', 0, 500);
@@ -70,6 +82,7 @@ final class DashboardSpecValidator
         }
 
         $keys = [];
+        $placed = [];
 
         foreach ($visualizations as $index => $visualization) {
             $path = "$.visualizations.{$index}";
@@ -84,16 +97,58 @@ final class DashboardSpecValidator
 
             $keys[] = $item['key'];
 
-            if (! is_string($item['type']) || ! in_array($item['type'], self::VISUALIZATION_TYPES, true)) {
+            if (! is_string($item['type']) || ! in_array($item['type'], $allowedTypes, true)) {
                 $this->fail("{$path}.type is not supported.");
             }
 
             $queryFields = $this->validateQuery($item['query'], "{$path}.query");
+
+            if ($item['type'] === 'pie') {
+                $this->assertPieQuery($item['query'], $queryFields, $path);
+            }
             $this->validateDisplay($item['display'], $item['type'], $queryFields, "{$path}.display");
             $this->validateVisualizationLayout($item['layout'], $columns, "{$path}.layout");
+            $this->assertNoOverlap($item['layout'], $placed, "{$path}.layout");
+            $placed[] = $item['layout'];
         }
 
         return $spec;
+    }
+
+    /**
+     * A pie shows the share of one measure across few categories; the palette
+     * has six validated slots, so a pie never has more slices than that.
+     *
+     * @param  array<string, mixed>  $query
+     * @param  array{metrics: list<string>, dimensions: list<string>}  $queryFields
+     */
+    private function assertPieQuery(array $query, array $queryFields, string $path): void
+    {
+        if (count($queryFields['dimensions']) !== 1) {
+            $this->fail("{$path}.query.dimensions must contain exactly one dimension for a pie.");
+        }
+
+        if ($query['limit'] > 6) {
+            $this->fail("{$path}.query.limit may not exceed 6 slices for a pie.");
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $layout
+     * @param  list<array<string, mixed>>  $placed
+     */
+    private function assertNoOverlap(array $layout, array $placed, string $path): void
+    {
+        foreach ($placed as $other) {
+            if (
+                $layout['x'] < $other['x'] + $other['width']
+                && $other['x'] < $layout['x'] + $layout['width']
+                && $layout['y'] < $other['y'] + $other['height']
+                && $other['y'] < $layout['y'] + $layout['height']
+            ) {
+                $this->fail("{$path} overlaps another visualization.");
+            }
+        }
     }
 
     /**
@@ -119,6 +174,10 @@ final class DashboardSpecValidator
             $this->assertIdentifier($metric['field'], "{$metricPath}.field", 128);
             $this->assertCatalogField($metric['field'], "{$metricPath}.field");
             $this->assertIdentifier($metric['alias'], "{$metricPath}.alias", 64, false);
+
+            if (is_string($metric['alias']) && $this->catalog->hasField($metric['alias'])) {
+                $this->fail("{$metricPath}.alias may not reuse a dataset field name.");
+            }
 
             if (! is_string($metric['aggregation']) || ! in_array($metric['aggregation'], self::AGGREGATIONS, true)) {
                 $this->fail("{$metricPath}.aggregation is not supported.");
@@ -171,6 +230,10 @@ final class DashboardSpecValidator
             $this->assertKeys($order, ['field', 'direction'], [], $orderPath);
             $this->assertIdentifier($order['field'], "{$orderPath}.field", 128);
 
+            if (! in_array($order['field'], [...$dimensionFields, ...$metricAliases], true)) {
+                $this->fail("{$orderPath}.field must reference a configured dimension or metric alias.");
+            }
+
             if (! is_string($order['direction']) || ! in_array($order['direction'], ['asc', 'desc'], true)) {
                 $this->fail("{$orderPath}.direction must be asc or desc.");
             }
@@ -201,7 +264,143 @@ final class DashboardSpecValidator
             }
 
             $this->validateFilterValue($filter['value'], "{$filterPath}.value");
+            $this->assertFilterIsCoherent($filter['field'], $filter['operator'], $filter['value'], $filterPath);
         }
+    }
+
+    /**
+     * Shape checks are not enough for a future executor: the operator, the
+     * value and the field type must make sense together.
+     */
+    private function assertFilterIsCoherent(string $field, string $operator, mixed $value, string $path): void
+    {
+        $type = $this->catalog->typeOf($field);
+
+        switch ($operator) {
+            case 'equals':
+            case 'not_equals':
+                if ($value === null || is_array($value)) {
+                    $this->fail("{$path}.value must be a single non-null scalar for {$operator}.");
+                }
+
+                $this->assertValueMatchesType($value, $type, "{$path}.value");
+
+                return;
+
+            case 'in':
+            case 'not_in':
+                if (! is_array($value) || $value === []) {
+                    $this->fail("{$path}.value must be a non-empty list for {$operator}.");
+                }
+
+                foreach ($value as $index => $item) {
+                    if ($item === null || is_array($item)) {
+                        $this->fail("{$path}.value.{$index} must be a non-null scalar.");
+                    }
+
+                    $this->assertValueMatchesType($item, $type, "{$path}.value.{$index}");
+                }
+
+                return;
+
+            case 'greater_than':
+            case 'greater_than_or_equal':
+            case 'less_than':
+            case 'less_than_or_equal':
+                $this->assertOrderable($type, $operator, $path);
+
+                if ($value === null || is_array($value) || is_bool($value)) {
+                    $this->fail("{$path}.value must be a single number or date for {$operator}.");
+                }
+
+                $this->assertValueMatchesType($value, $type, "{$path}.value");
+
+                return;
+
+            case 'between':
+                $this->assertOrderable($type, $operator, $path);
+
+                if (! is_array($value) || count($value) !== 2) {
+                    $this->fail("{$path}.value must be a list of exactly two values for between.");
+                }
+
+                foreach ($value as $index => $item) {
+                    if ($item === null || is_array($item) || is_bool($item)) {
+                        $this->fail("{$path}.value.{$index} must be a number or date.");
+                    }
+
+                    $this->assertValueMatchesType($item, $type, "{$path}.value.{$index}");
+                }
+
+                return;
+
+            case 'contains':
+                if ($type !== 'string') {
+                    $this->fail("{$path}.operator contains is only valid for string fields.");
+                }
+
+                if (! is_string($value) || $value === '') {
+                    $this->fail("{$path}.value must be a non-empty string for contains.");
+                }
+
+                return;
+
+            case 'is_null':
+            case 'is_not_null':
+                if ($value !== null) {
+                    $this->fail("{$path}.value must be null for {$operator}.");
+                }
+
+                return;
+
+            case 'previous_quarter':
+            case 'previous_period':
+                if ($type !== 'datetime') {
+                    $this->fail("{$path}.operator {$operator} is only valid for datetime fields.");
+                }
+
+                if ($value !== null) {
+                    $this->fail("{$path}.value must be null for {$operator}.");
+                }
+
+                return;
+        }
+    }
+
+    private function assertOrderable(?string $type, string $operator, string $path): void
+    {
+        if ($type !== 'numeric' && $type !== 'datetime') {
+            $this->fail("{$path}.operator {$operator} is only valid for numeric or datetime fields.");
+        }
+    }
+
+    private function assertValueMatchesType(mixed $value, ?string $type, string $path): void
+    {
+        $matches = match ($type) {
+            'numeric' => is_int($value) || is_float($value),
+            'string' => is_string($value),
+            'datetime' => is_string($value) && $this->isParsableDate($value),
+            default => false,
+        };
+
+        if (! $matches) {
+            $this->fail("{$path} does not match the field type.");
+        }
+    }
+
+    private function isParsableDate(string $value): bool
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})?)?$/', $value) !== 1) {
+            return false;
+        }
+
+        try {
+            new DateTimeImmutable($value);
+        } catch (Exception) {
+            return false;
+        }
+
+        return true;
     }
 
     private function validateFilterValue(mixed $value, string $path): void
@@ -248,7 +447,23 @@ final class DashboardSpecValidator
             return;
         }
 
-        if ($type === 'bar' || $type === 'line') {
+        if ($type === 'pie') {
+            $this->assertKeys($display, ['category', 'value'], [], $path);
+            $this->assertIdentifier($display['category'], "{$path}.category", 128);
+            $this->assertIdentifier($display['value'], "{$path}.value", 128);
+
+            if (! in_array($display['category'], $queryFields['dimensions'], true)) {
+                $this->fail("{$path}.category must reference a configured dimension.");
+            }
+
+            if (! in_array($display['value'], $queryFields['metrics'], true)) {
+                $this->fail("{$path}.value must reference a configured metric alias.");
+            }
+
+            return;
+        }
+
+        if ($type === 'bar' || $type === 'line' || $type === 'area') {
             $this->assertKeys($display, ['x_axis', 'y_axis'], [], $path);
             $this->assertIdentifier($display['x_axis'], "{$path}.x_axis", 128);
             $this->assertIdentifier($display['y_axis'], "{$path}.y_axis", 128);

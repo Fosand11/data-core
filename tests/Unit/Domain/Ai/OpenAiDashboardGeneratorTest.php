@@ -59,8 +59,35 @@ class OpenAiDashboardGeneratorTest extends TestCase
             $this->assertStringNotContainsString('sales_representative', $systemInstructions);
             $this->assertArrayHasKey('anyOf', $schema['$defs']['visualization']);
             $this->assertArrayNotHasKey('allOf', $schema['$defs']['visualization']);
+            $this->assertSame('1.1', $schema['properties']['version']['const']);
+            $variantTypes = array_map(
+                fn (array $variant): string => $variant['properties']['type']['const'],
+                $schema['$defs']['visualization']['anyOf'],
+            );
+            $this->assertEqualsCanonicalizing(['kpi', 'bar', 'line', 'area', 'pie', 'table'], $variantTypes);
             $this->assertContains('format', $schema['$defs']['metric']['required']);
             $this->assertContains(null, $schema['$defs']['metric']['properties']['format']['enum'], true);
+
+            return true;
+        });
+    }
+
+    public function test_a_refinement_uses_refinement_instructions_and_includes_the_current_spec(): void
+    {
+        Http::fake(['api.openai.com/v1/responses' => Http::response($this->completedResponse($this->validSpec()), 200)]);
+        $input = new DashboardGenerationInput('0198-tenant-internal-id', 987654321, 'quita los filtros', $this->validSpec());
+
+        $this->generator()->generate($input);
+
+        Http::assertSent(function (Request $request) use ($input): bool {
+            $payload = $request->data();
+            $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
+
+            $this->assertStringContainsString('Refinement mode', $payload['input'][0]['content']);
+            $this->assertStringContainsString('CURRENT_DASHBOARD_SPEC', $payload['input'][1]['content']);
+            $this->assertStringContainsString('REQUESTED_CHANGE:'."\nquita los filtros", $payload['input'][1]['content']);
+            $this->assertStringNotContainsString($input->tenantId, $encoded);
+            $this->assertStringNotContainsString((string) $input->requestedBy, $encoded);
 
             return true;
         });

@@ -28,6 +28,14 @@ final class DemoSalesDatasetCatalog
         return self::FIELDS;
     }
 
+    /**
+     * The field a period filter applies to.
+     */
+    public function dateField(): string
+    {
+        return 'sold_at';
+    }
+
     public function hasField(string $field): bool
     {
         return array_key_exists($field, self::FIELDS);

@@ -9,8 +9,8 @@ use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Exceptions\AiGenerationException;
 use App\Domain\Ai\Prompts\DashboardGenerationInstructions;
 use App\Domain\Ai\Schemas\DashboardSpecSchema;
+use App\Domain\Ai\Schemas\ProviderSpecNormalizer;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -109,15 +109,8 @@ final readonly class OpenAiDashboardGenerator implements DashboardGenerator, Mod
                 ->timeout(max(1, $this->timeout))
                 ->retry(
                     max(1, $this->maxRetries + 1),
-                    fn (int $attempt): int => min(1000, 200 * (2 ** max(0, $attempt - 1))),
-                    function (Throwable $exception): bool {
-                        if ($exception instanceof ConnectionException) {
-                            return true;
-                        }
-
-                        return $exception instanceof RequestException
-                            && ($exception->response->status() === 429 || $exception->response->serverError());
-                    },
+                    fn (int $attempt): int => TransientHttpFailures::backoffMilliseconds($attempt),
+                    fn (Throwable $exception): bool => TransientHttpFailures::shouldRetry($exception),
                     throw: false,
                 )
                 ->post('/responses', $this->payload($input));
@@ -137,11 +130,11 @@ final readonly class OpenAiDashboardGenerator implements DashboardGenerator, Mod
             'input' => [
                 [
                     'role' => 'system',
-                    'content' => $this->instructions->build(),
+                    'content' => $this->instructions->systemFor($input),
                 ],
                 [
                     'role' => 'user',
-                    'content' => $input->prompt,
+                    'content' => $this->instructions->userMessageFor($input),
                 ],
             ],
             'text' => [
@@ -247,34 +240,7 @@ final readonly class OpenAiDashboardGenerator implements DashboardGenerator, Mod
             );
         }
 
-        return $this->removeNullableOptionalFormats($definition);
-    }
-
-    /**
-     * @param  array<string, mixed>  $definition
-     * @return array<string, mixed>
-     */
-    private function removeNullableOptionalFormats(array $definition): array
-    {
-        $visualizations = $definition['visualizations'] ?? null;
-
-        if (! is_array($visualizations)) {
-            return $definition;
-        }
-
-        foreach ($visualizations as $visualizationIndex => $visualization) {
-            if (! is_array($visualization) || ! isset($visualization['query']['metrics']) || ! is_array($visualization['query']['metrics'])) {
-                continue;
-            }
-
-            foreach ($visualization['query']['metrics'] as $metricIndex => $metric) {
-                if (is_array($metric) && array_key_exists('format', $metric) && $metric['format'] === null) {
-                    unset($definition['visualizations'][$visualizationIndex]['query']['metrics'][$metricIndex]['format']);
-                }
-            }
-        }
-
-        return $definition;
+        return ProviderSpecNormalizer::dropNullMetricFormats($definition);
     }
 
     /**
@@ -296,10 +262,7 @@ final readonly class OpenAiDashboardGenerator implements DashboardGenerator, Mod
 
     private function connectionFailure(ConnectionException $exception): AiGenerationException
     {
-        $message = strtolower($exception->getMessage());
-        $isTimeout = str_contains($message, 'timed out')
-            || str_contains($message, 'timeout')
-            || str_contains($message, 'curl error 28');
+        $isTimeout = TransientHttpFailures::isTimeout($exception);
 
         return new AiGenerationException(
             $isTimeout ? 'OPENAI_TIMEOUT' : 'OPENAI_UNAVAILABLE',
