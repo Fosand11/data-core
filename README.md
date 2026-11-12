@@ -117,7 +117,7 @@ DASHBOARD_AI_DRIVER=fake   # fake | gemini | openai
 
 # Gemini (clave de Google AI Studio, sólo en .env local; nunca se versiona)
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=
 GEMINI_TIMEOUT=60
 GEMINI_MAX_RETRIES=2
 GEMINI_MAX_OUTPUT_TOKENS=16384

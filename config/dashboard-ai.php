@@ -39,7 +39,7 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-3.8-flash'),
+        'model' => env('GEMINI_MODEL'),
         'timeout' => (int) env('GEMINI_TIMEOUT', 60),
         'max_retries' => (int) env('GEMINI_MAX_RETRIES', 2),
         'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 16384),
