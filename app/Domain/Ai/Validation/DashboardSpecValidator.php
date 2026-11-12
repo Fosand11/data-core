@@ -2,6 +2,7 @@
 
 namespace App\Domain\Ai\Validation;
 
+use App\Domain\Ai\Catalogs\DemoSalesDatasetCatalog;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Exceptions\InvalidDashboardSpecException;
 
@@ -30,6 +31,10 @@ final class DashboardSpecValidator
 
     private const FORMATS = ['currency', 'number', 'percent', 'integer'];
 
+    public function __construct(
+        private readonly DemoSalesDatasetCatalog $catalog = new DemoSalesDatasetCatalog,
+    ) {}
+
     public function validate(DashboardSpec $spec): DashboardSpec
     {
         $definition = $spec->toArray();
@@ -50,6 +55,11 @@ final class DashboardSpecValidator
         $this->assertText($definition['title'], '$.title', 1, 120);
         $this->assertText($definition['description'], '$.description', 0, 500);
         $this->assertIdentifier($definition['dataset'], '$.dataset', 64, false);
+
+        if ($definition['dataset'] !== DemoSalesDatasetCatalog::DATASET) {
+            $this->fail('$.dataset is not available in the approved dataset catalog.');
+        }
+
         $this->validateFilters($definition['global_filters'], '$.global_filters');
         $columns = $this->validateRootLayout($definition['layout']);
 
@@ -107,10 +117,15 @@ final class DashboardSpecValidator
             $metric = $this->assertObject($metric, $metricPath);
             $this->assertKeys($metric, ['field', 'aggregation', 'alias'], ['format'], $metricPath);
             $this->assertIdentifier($metric['field'], "{$metricPath}.field", 128);
+            $this->assertCatalogField($metric['field'], "{$metricPath}.field");
             $this->assertIdentifier($metric['alias'], "{$metricPath}.alias", 64, false);
 
             if (! is_string($metric['aggregation']) || ! in_array($metric['aggregation'], self::AGGREGATIONS, true)) {
                 $this->fail("{$metricPath}.aggregation is not supported.");
+            }
+
+            if (in_array($metric['aggregation'], ['sum', 'avg'], true) && $this->catalog->typeOf($metric['field']) !== 'numeric') {
+                $this->fail("{$metricPath}.field must be numeric for this aggregation.");
             }
 
             if (array_key_exists('format', $metric)) {
@@ -139,6 +154,7 @@ final class DashboardSpecValidator
             $dimension = $this->assertObject($dimension, $dimensionPath);
             $this->assertKeys($dimension, ['field'], [], $dimensionPath);
             $this->assertIdentifier($dimension['field'], "{$dimensionPath}.field", 128);
+            $this->assertCatalogField($dimension['field'], "{$dimensionPath}.field");
             $dimensionFields[] = $dimension['field'];
         }
 
@@ -178,6 +194,7 @@ final class DashboardSpecValidator
             $filter = $this->assertObject($filter, $filterPath);
             $this->assertKeys($filter, ['field', 'operator', 'value'], [], $filterPath);
             $this->assertIdentifier($filter['field'], "{$filterPath}.field", 128);
+            $this->assertCatalogField($filter['field'], "{$filterPath}.field");
 
             if (! is_string($filter['operator']) || ! in_array($filter['operator'], self::FILTER_OPERATORS, true)) {
                 $this->fail("{$filterPath}.operator is not supported.");
@@ -357,6 +374,13 @@ final class DashboardSpecValidator
     {
         if (! is_int($value) || $value < $min || $value > $max) {
             $this->fail("{$path} must be an integer between {$min} and {$max}.");
+        }
+    }
+
+    private function assertCatalogField(string $field, string $path): void
+    {
+        if (! $this->catalog->hasField($field)) {
+            $this->fail("{$path} is not available in the approved dataset catalog.");
         }
     }
 

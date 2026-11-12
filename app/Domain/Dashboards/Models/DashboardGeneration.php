@@ -23,6 +23,7 @@ class DashboardGeneration extends Model
         'dashboard_id',
         'requested_by',
         'provider',
+        'model',
         'status',
         'prompt',
         'spec_version',

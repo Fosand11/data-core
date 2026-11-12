@@ -98,7 +98,7 @@ final class FakeDashboardGenerator implements DashboardGenerator
             'dataset' => 'demo_sales',
             'global_filters' => [],
             'visualizations' => [
-                $this->chart('sales_by_representative', 'Ventas por integrante', 'bar', 'sales_representative', 'total_amount', 'sum', 'total_sales'),
+                $this->chart('sales_by_representative', 'Ventas por integrante', 'bar', 'salesperson', 'total_amount', 'sum', 'total_sales'),
             ],
             'layout' => ['columns' => 12],
         ]);

@@ -76,7 +76,8 @@ onUnmounted(stopPolling);
                     <div class="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
                         <span class="inline-flex items-center gap-1.5"><Clock3 class="size-4" aria-hidden="true" />{{ createdAt }}</span>
                         <span v-if="dashboard.author">Creado por {{ dashboard.author.name }}</span>
-                        <span v-if="dashboard.provider">Proveedor: {{ dashboard.provider }}</span>
+                        <span v-if="dashboard.provider">provider: {{ dashboard.provider }}</span>
+                        <span v-if="dashboard.generation?.model">Modelo: {{ dashboard.generation.model }}</span>
                         <span v-if="dashboard.spec_version">Spec: {{ dashboard.spec_version }}</span>
                     </div>
                 </div>

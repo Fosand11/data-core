@@ -3,7 +3,9 @@
 namespace App\Domain\Dashboards\Jobs;
 
 use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Contracts\ModelAwareDashboardGenerator;
 use App\Domain\Ai\Data\DashboardGenerationInput;
+use App\Domain\Ai\Exceptions\AiGenerationException;
 use App\Domain\Ai\Exceptions\InvalidDashboardSpecException;
 use App\Domain\Ai\Exceptions\UnsupportedDashboardAiDriver;
 use App\Domain\Ai\Validation\DashboardSpecValidator;
@@ -25,19 +27,18 @@ final class GenerateDashboardJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 1;
 
-    public int $timeout = 60;
-
-    /** @var list<int> */
-    public array $backoff = [5, 15, 30];
+    public int $timeout = 200;
 
     public function __construct(public readonly string $generationId) {}
 
     public function handle(DashboardGenerator $generator, DashboardSpecValidator $validator): void
     {
         try {
-            $generation = $this->beginProcessing();
+            $generation = $this->beginProcessing(
+                $generator instanceof ModelAwareDashboardGenerator ? $generator->model() : null,
+            );
 
             if ($generation === null) {
                 return;
@@ -61,14 +62,14 @@ final class GenerateDashboardJob implements ShouldQueue
             Log::error('Dashboard generation failed.', [
                 'generation_id' => $this->generationId,
                 'exception' => $exception::class,
-                'technical_message' => $exception->getMessage(),
+                'error_code' => $this->errorCodeFor($exception),
             ]);
         }
     }
 
-    private function beginProcessing(): ?DashboardGeneration
+    private function beginProcessing(?string $model): ?DashboardGeneration
     {
-        return DB::transaction(function (): ?DashboardGeneration {
+        return DB::transaction(function () use ($model): ?DashboardGeneration {
             $generation = DashboardGeneration::query()->lockForUpdate()->findOrFail($this->generationId);
             $dashboard = Dashboard::query()->lockForUpdate()->findOrFail($generation->dashboard_id);
 
@@ -81,6 +82,7 @@ final class GenerateDashboardJob implements ShouldQueue
             $now = now();
             $generation->update([
                 'status' => DashboardGenerationStatus::Processing,
+                'model' => $model,
                 'started_at' => $now,
                 'error_code' => null,
                 'error_message' => null,
@@ -139,17 +141,18 @@ final class GenerateDashboardJob implements ShouldQueue
 
     private function markFailed(Throwable $exception): void
     {
-        $errorCode = match (true) {
-            $exception instanceof InvalidDashboardSpecException => 'invalid_dashboard_spec',
-            $exception instanceof UnsupportedDashboardAiDriver => 'unsupported_provider',
-            $exception instanceof LogicException => 'invalid_generation_context',
-            default => 'generation_failed',
-        };
+        $errorCode = $this->errorCodeFor($exception);
 
         $message = match ($errorCode) {
-            'invalid_dashboard_spec' => 'La definición generada no superó la validación de seguridad.',
-            'unsupported_provider' => 'El generador de dashboards no está configurado correctamente.',
-            'invalid_generation_context' => 'No fue posible validar el contexto de la generación.',
+            'DASHBOARD_SPEC_INVALID' => 'La definición generada no superó la validación de seguridad.',
+            'UNSUPPORTED_PROVIDER' => 'El generador de dashboards no está configurado correctamente.',
+            'INVALID_GENERATION_CONTEXT' => 'No fue posible validar el contexto de la generación.',
+            'OPENAI_AUTHENTICATION_FAILED' => 'La integración con OpenAI no está configurada correctamente.',
+            'OPENAI_RATE_LIMITED' => 'El servicio de generación alcanzó temporalmente su límite. Inténtalo más tarde.',
+            'OPENAI_TIMEOUT' => 'El servicio de generación tardó demasiado en responder. Inténtalo nuevamente.',
+            'OPENAI_INVALID_RESPONSE' => 'El servicio devolvió una definición que no pudo procesarse.',
+            'OPENAI_UNAVAILABLE' => 'El servicio de generación no está disponible temporalmente.',
+            'AI_GENERATION_REFUSED' => 'El modelo no pudo generar una definición para esta solicitud.',
             default => 'No fue posible generar el dashboard. Inténtalo nuevamente más tarde.',
         };
 
@@ -178,6 +181,17 @@ final class GenerateDashboardJob implements ShouldQueue
                 ]);
             }
         });
+    }
+
+    private function errorCodeFor(Throwable $exception): string
+    {
+        return match (true) {
+            $exception instanceof AiGenerationException => $exception->errorCode,
+            $exception instanceof InvalidDashboardSpecException => 'DASHBOARD_SPEC_INVALID',
+            $exception instanceof UnsupportedDashboardAiDriver => 'UNSUPPORTED_PROVIDER',
+            $exception instanceof LogicException => 'INVALID_GENERATION_CONTEXT',
+            default => 'GENERATION_FAILED',
+        };
     }
 
     private function assertConsistentRelations(DashboardGeneration $generation, Dashboard $dashboard): void

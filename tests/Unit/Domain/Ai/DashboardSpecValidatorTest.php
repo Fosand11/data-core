@@ -72,4 +72,20 @@ class DashboardSpecValidatorTest extends TestCase
         $this->expectException(InvalidDashboardSpecException::class);
         $this->validator->validate(DashboardSpec::fromArray($this->validSpec));
     }
+
+    public function test_fields_outside_the_approved_catalog_are_rejected(): void
+    {
+        $this->validSpec['visualizations'][0]['query']['metrics'][0]['field'] = 'invented_revenue';
+
+        $this->expectException(InvalidDashboardSpecException::class);
+        $this->validator->validate(DashboardSpec::fromArray($this->validSpec));
+    }
+
+    public function test_non_numeric_fields_cannot_be_summed(): void
+    {
+        $this->validSpec['visualizations'][0]['query']['metrics'][0]['field'] = 'region';
+
+        $this->expectException(InvalidDashboardSpecException::class);
+        $this->validator->validate(DashboardSpec::fromArray($this->validSpec));
+    }
 }

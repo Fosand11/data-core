@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Contracts\ModelAwareDashboardGenerator;
 use App\Domain\Dashboards\Actions\StartDashboardGeneration;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Tenancy\CurrentTenant;
@@ -49,6 +50,9 @@ class DashboardManagementController extends Controller
             ...$this->navigationProps($request, $tenant),
             'initialPrompt' => is_string($prompt) && mb_strlen($prompt) <= 2000 ? trim($prompt) : '',
             'provider' => $this->generator->provider(),
+            'providerModel' => $this->generator instanceof ModelAwareDashboardGenerator
+                ? $this->generator->model()
+                : null,
         ]);
     }
 
@@ -85,6 +89,7 @@ class DashboardManagementController extends Controller
                     'id' => $latestGeneration->getKey(),
                     'status' => $latestGeneration->status->value,
                     'provider' => $latestGeneration->provider,
+                    'model' => $latestGeneration->model,
                     'started_at' => $latestGeneration->started_at?->toIso8601String(),
                     'completed_at' => $latestGeneration->completed_at?->toIso8601String(),
                     'error_message' => $latestGeneration->error_message,

@@ -14,6 +14,7 @@ const props = defineProps<{
     tenants: TenantOption[];
     initialPrompt: string;
     provider: string;
+    providerModel: string | null;
 }>();
 
 const form = useForm({
@@ -86,7 +87,9 @@ onMounted(resizePrompt);
                     </div>
                     <div class="mt-4 flex flex-wrap items-center gap-3">
                         <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-h2">Convierte una pregunta en estructura</h1>
-                        <StatusBadge variant="primary">Motor {{ provider }}</StatusBadge>
+                        <StatusBadge variant="primary">
+                            {{ provider === 'openai' ? 'Generador de IA' : 'Simulador local' }}
+                        </StatusBadge>
                     </div>
                     <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                         Empieza con lenguaje natural. InsightFlow organizará tu intención en métricas, dimensiones y visualizaciones listas para
@@ -101,8 +104,14 @@ onMounted(resizePrompt);
             >
                 <Sparkles class="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
                 <p>
-                    <strong>Estudio de demostración.</strong> Diseña la definición con <code>demo_sales</code>; todavía no se consulta una base de
-                    datos ni se llama a OpenAI o Metabase.
+                    <template v-if="provider === 'openai'">
+                        <strong>Generación real de estructura.</strong> Aún no se están consultando datos reales. La IA está diseñando la estructura
+                        del dashboard con tu solicitud y el catálogo permitido de <code>demo_sales</code>; no recibe filas ni ejecuta consultas.
+                    </template>
+                    <template v-else>
+                        <strong>Estudio de demostración.</strong> El simulador local diseña la definición con <code>demo_sales</code>; no se consulta
+                        una base de datos ni se llama a OpenAI o Metabase.
+                    </template>
                 </p>
             </div>
 
@@ -201,6 +210,9 @@ onMounted(resizePrompt);
                         <span class="mt-1 leading-5">Las conexiones reales llegarán en una fase posterior.</span>
                     </button>
                     <p class="mt-4 text-xs leading-5 text-muted-foreground">Guardamos el prompt y el spec validado, nunca razonamientos internos.</p>
+                    <p v-if="provider === 'openai' && providerModel" class="mt-2 font-mono text-[0.7rem] text-muted-foreground">
+                        Modelo: {{ providerModel }}
+                    </p>
                 </section>
             </div>
         </main>

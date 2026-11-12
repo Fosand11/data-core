@@ -108,6 +108,7 @@ export interface DashboardDetail extends DashboardSummary {
         id: string;
         status: DashboardGenerationStatus;
         provider: string;
+        model: string | null;
         started_at: string | null;
         completed_at: string | null;
         error_message: string | null;

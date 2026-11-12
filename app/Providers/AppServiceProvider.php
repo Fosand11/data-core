@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Prompts\DashboardGenerationInstructions;
 use App\Domain\Ai\Providers\FakeDashboardGenerator;
+use App\Domain\Ai\Providers\OpenAiDashboardGenerator;
 use App\Domain\Ai\Providers\UnsupportedDashboardGenerator;
+use App\Domain\Ai\Schemas\DashboardSpecSchema;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Policies\DashboardPolicy;
 use App\Domain\Tenancy\CurrentTenant;
@@ -21,10 +24,20 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CurrentTenant::class, fn () => new CurrentTenant);
         $this->app->bind(DashboardGenerator::class, function (): DashboardGenerator {
             $driver = config('dashboard-ai.driver');
+            $normalizedDriver = is_string($driver) ? strtolower(trim($driver)) : '';
 
-            return is_string($driver) && strtolower(trim($driver)) === 'fake'
-                ? new FakeDashboardGenerator
-                : new UnsupportedDashboardGenerator;
+            return match ($normalizedDriver) {
+                'fake' => new FakeDashboardGenerator,
+                'openai' => new OpenAiDashboardGenerator(
+                    apiKey: (string) config('dashboard-ai.openai.api_key', ''),
+                    configuredModel: (string) config('dashboard-ai.openai.model', ''),
+                    timeout: (int) config('dashboard-ai.openai.timeout', 60),
+                    maxRetries: (int) config('dashboard-ai.openai.max_retries', 2),
+                    schema: $this->app->make(DashboardSpecSchema::class),
+                    instructions: $this->app->make(DashboardGenerationInstructions::class),
+                ),
+                default => new UnsupportedDashboardGenerator,
+            };
         });
     }
 
