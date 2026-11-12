@@ -1,11 +1,88 @@
-# Data Core
+# InsightFlow
 
-SaaS multi-tenant para crear dashboards mediante lenguaje natural. Un usuario
-describe lo que quiere analizar; un generador de IA produce un `DashboardSpec`
-(JSON estructurado, nunca SQL) que se valida contra un catálogo de datos
-aprobado antes de persistirse.
+**Pregúntale a tus datos.** SaaS multi-tenant donde describes en lenguaje natural lo que quieres entender y la IA diseña el dashboard. Lo valida, calcula los números en tu propio servidor y te deja refinarlo, buscarlo y exportarlo.
 
-## Estado
+![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
+
+> Proyecto de portfolio. Laravel 12 · PHP 8.4 · Vue 3 + TypeScript · Inertia · ECharts · Gemini / OpenAI.
+
+## Qué puedes hacer
+
+### 1. Preguntar en lenguaje natural
+
+Escribes una frase y obtienes un dashboard con indicadores, gráficas y tablas. La IA solo recibe tu pregunta y los nombres de los campos disponibles, nunca las filas: los números se calculan en el servidor.
+
+![Pantalla para crear un dashboard con una pregunta](.github/images/create.webp)
+
+### 2. Refinar con IA, con vista previa y deshacer
+
+Pides un cambio («cambia las barras por un gráfico circular») y la IA propone un dashboard nuevo. Lo comparas con el actual y decides si lo aplicas. Cada cambio queda como una versión que puedes restaurar.
+
+![Vista previa de un cambio propuesto por la IA](.github/images/refine.webp)
+
+### 3. Claro y oscuro, buscador y exportación
+
+| Buscador `⌘K` | Exportar |
+| --- | --- |
+| ![Buscador de comandos](.github/images/palette.webp) | ![Menú de exportación](.github/images/export.webp) |
+
+![Dashboard en tema oscuro con tabla de detalle](.github/images/dashboard-dark.webp)
+
+Funciona también en móvil:
+
+<img src=".github/images/mobile.webp" alt="Dashboard en pantalla de móvil" width="280">
+
+## Cómo funciona
+
+```mermaid
+flowchart LR
+    U[Pregunta en lenguaje natural] --> C[Controller + Form Request]
+    C --> Q[Job en cola]
+    Q --> P["Proveedor de IA<br/>Gemini · OpenAI · fake"]
+    P -- "DashboardSpec (JSON)" --> V{Validador estricto}
+    V -- inválido --> F[Error claro al usuario]
+    V -- válido --> D[(Dashboard + versión)]
+    D --> E[Ejecutor de consultas estructuradas]
+    E --> T[(Datos del tenant)]
+    E --> G[Gráficas con ECharts]
+```
+
+## Decisiones técnicas
+
+- **La IA nunca escribe SQL.** Produce un `DashboardSpec` (JSON) que el
+  `DashboardSpecValidator` comprueba contra un catálogo aprobado: lista de campos,
+  sin HTML, referencias coherentes. Solo un spec válido se ejecuta, y el ejecutor lo traduce
+  a consultas estructuradas con valores por _bindings_ e identificadores del catálogo.
+- **Aislamiento por tenant en cada capa.** UUID en todos los recursos, `tenant_id`
+  con clave foránea, Policies y un `CurrentTenant` que se revalida en cada petición.
+  Un `tenant_id` enviado en el request se rechaza. Cada recurso nuevo lleva una
+  prueba positiva y otra cross-tenant.
+- **Proveedores intercambiables.** `fake` (determinista, para desarrollo y tests),
+  `gemini` (plan gratuito de Google AI Studio) y `openai`, detrás de una misma
+  interfaz. Un valor ausente o desconocido falla de forma explícita.
+- **Refinar sin riesgo.** Un cambio pedido a la IA es una _propuesta_: no toca el
+  dashboard hasta que se aplica. Las versiones son un historial _append-only_.
+- **Trabajo lento fuera de la petición.** La generación y el refinamiento son Jobs
+  idempotentes, con límite de generaciones por usuario y manejo de fallos del
+  proveedor (saturación, límites, respuestas inválidas) con mensajes claros.
+- **Exportación en el navegador.** PNG, CSV (protegido contra inyección de
+  fórmulas), PDF y PowerPoint se generan en el cliente, sin enviar datos a terceros.
+- **Calidad verificable.** 281 pruebas PHPUnit y 35 de Vitest, formato y análisis
+  estático en el CI, migraciones comprobadas en PostgreSQL 17 y dependencias
+  auditadas (`composer audit` sin avisos).
+
+## Stack
+
+| Capa | Tecnología |
+| --- | --- |
+| Backend | PHP 8.4, Laravel 12, monolito modular (`app/Domain`) |
+| Frontend | Vue 3 (`<script setup>`, TypeScript), Inertia, Tailwind CSS |
+| Gráficas | Apache ECharts (carga bajo demanda), `pptxgenjs` para PowerPoint |
+| IA | Gemini y OpenAI tras la interfaz `DashboardGenerator` |
+| Datos | PostgreSQL 17 (SQLite en tests), Redis para colas |
+| Calidad | PHPUnit, Vitest, Pint, ESLint, Prettier, `vue-tsc`, GitHub Actions |
+
+## Funcionalidades en detalle
 
 - Autenticación, organizaciones y aislamiento explícito por tenant.
 - Generación asíncrona de dashboards (cola + Job idempotente).
