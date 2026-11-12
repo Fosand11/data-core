@@ -43,6 +43,32 @@ class DashboardPolicy
         return $this->update($user, $dashboard);
     }
 
+    public function duplicate(User $user, Dashboard $dashboard): bool
+    {
+        return $this->view($user, $dashboard) && $this->create($user);
+    }
+
+    /**
+     * Any member who can see a dashboard may pin it for themselves.
+     */
+    public function pin(User $user, Dashboard $dashboard): bool
+    {
+        return $this->view($user, $dashboard);
+    }
+
+    /**
+     * Proposing, applying and undoing changes to a dashboard's content.
+     */
+    public function refine(User $user, Dashboard $dashboard): bool
+    {
+        return $this->update($user, $dashboard);
+    }
+
+    public function retry(User $user, Dashboard $dashboard): bool
+    {
+        return $this->update($user, $dashboard);
+    }
+
     private function hasManagementRole(User $user): bool
     {
         $tenant = $this->currentTenant->get();
