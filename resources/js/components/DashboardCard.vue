@@ -1,64 +1,49 @@
 <script setup lang="ts">
 import DashboardStatusBadge from '@/components/DashboardStatusBadge.vue';
+import { formatRelative } from '@/lib/format';
+import { visualizationIcons, visualizationNames } from '@/lib/visualizationIcons';
 import type { DashboardSummary } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { ArrowUpRight, BarChart3 } from 'lucide-vue-next';
+import { Pin } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const props = defineProps<{
     dashboard: DashboardSummary;
 }>();
 
-const createdAt = computed(() =>
-    new Intl.DateTimeFormat('es', {
-        dateStyle: 'medium',
-    }).format(new Date(props.dashboard.created_at)),
-);
+const glyphs = computed(() => props.dashboard.visualization_types.slice(0, 4));
+const meta = computed(() => [formatRelative(props.dashboard.created_at), props.dashboard.author?.name].filter(Boolean).join(' · '));
 </script>
 
 <template>
     <article
-        class="group relative overflow-hidden rounded-[1.35rem] border bg-card shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-soft"
+        class="group relative flex h-full flex-col rounded-2xl border bg-card p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-soft"
     >
-        <div
-            class="relative h-28 overflow-hidden border-b bg-[linear-gradient(135deg,hsl(var(--primary-subtle)),hsl(var(--card))_68%)]"
-            aria-hidden="true"
-        >
-            <span class="absolute left-5 top-5 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-primary/55">Insight / board</span>
-            <div class="absolute inset-x-5 bottom-4 flex h-12 items-end gap-1.5 opacity-70">
-                <span class="h-[28%] flex-1 rounded-t-sm bg-primary/20 transition-all duration-500 group-hover:h-[46%]" />
-                <span class="h-[62%] flex-1 rounded-t-sm bg-primary/35 transition-all duration-500 group-hover:h-[74%]" />
-                <span class="h-[42%] flex-1 rounded-t-sm bg-primary/25 transition-all duration-500 group-hover:h-[58%]" />
-                <span class="h-[82%] flex-1 rounded-t-sm bg-primary/65 transition-all duration-500 group-hover:h-[94%]" />
-                <span class="h-[54%] flex-1 rounded-t-sm bg-primary/30 transition-all duration-500 group-hover:h-[68%]" />
-            </div>
-            <BarChart3
-                class="absolute right-5 top-4 size-5 text-primary transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"
-            />
-        </div>
-        <div class="p-5">
-            <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                    <h3 class="truncate font-semibold text-foreground">
-                        <Link
-                            :href="route('dashboards.show', { dashboard: dashboard.id })"
-                            class="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                            {{ dashboard.title }}
-                        </Link>
-                    </h3>
-                    <p class="mt-1 text-xs text-muted-foreground">{{ createdAt }}</p>
-                </div>
-                <span
-                    class="flex size-8 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition-all duration-300 group-hover:border-primary/25 group-hover:bg-primary group-hover:text-white"
-                >
-                    <ArrowUpRight class="size-4" aria-hidden="true" />
-                </span>
-            </div>
-            <div class="mt-3 flex items-center justify-between gap-3">
-                <DashboardStatusBadge :status="dashboard.status" />
-                <span v-if="dashboard.author" class="truncate text-xs text-muted-foreground">{{ dashboard.author.name }}</span>
+        <div class="flex min-h-7 items-center gap-1.5">
+            <span
+                v-for="type in glyphs"
+                :key="type"
+                :title="visualizationNames[type]"
+                class="flex size-7 items-center justify-center rounded-lg bg-primary-subtle text-primary"
+            >
+                <component :is="visualizationIcons[type]" class="size-3.5" aria-hidden="true" />
+            </span>
+            <div class="ml-auto flex items-center gap-2">
+                <DashboardStatusBadge v-if="dashboard.status !== 'ready'" :status="dashboard.status" />
+                <Pin v-if="dashboard.is_pinned" class="size-3.5 fill-primary text-primary" aria-label="Fijado" />
             </div>
         </div>
+
+        <h3 class="mt-4 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground">
+            <Link
+                :href="route('dashboards.show', { dashboard: dashboard.id })"
+                class="rounded-sm outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring"
+            >
+                {{ dashboard.title }}
+            </Link>
+        </h3>
+        <p v-if="dashboard.description" class="mt-1.5 line-clamp-2 text-sm leading-5 text-muted-foreground">{{ dashboard.description }}</p>
+
+        <p class="mt-auto pt-5 text-xs text-muted-foreground">{{ meta }}</p>
     </article>
 </template>

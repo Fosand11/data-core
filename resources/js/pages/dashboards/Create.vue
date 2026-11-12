@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import AppButton from '@/components/AppButton.vue';
-import AppLabel from '@/components/AppLabel.vue';
 import InputError from '@/components/InputError.vue';
-import StatusBadge from '@/components/StatusBadge.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
 import { Head, useForm } from '@inertiajs/vue3';
-import { CornerDownLeft, Database, Sparkles } from 'lucide-vue-next';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { ArrowUp, Database, LoaderCircle, ShieldCheck } from 'lucide-vue-next';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     currentTenant: CurrentTenant;
@@ -22,6 +19,11 @@ const form = useForm({
 });
 const promptInput = ref<HTMLTextAreaElement | null>(null);
 
+const providerNames: Record<string, string> = { gemini: 'Gemini', openai: 'OpenAI', fake: 'Simulador local' };
+const providerLabel = computed(() => providerNames[props.provider] ?? props.provider);
+const isExternalProvider = computed(() => props.provider === 'gemini' || props.provider === 'openai');
+const canSubmit = computed(() => !form.processing && form.prompt.trim().length >= 10);
+
 const suggestions = [
     'Muéstrame las ventas por región del último trimestre.',
     'Comparar ingresos con el periodo anterior.',
@@ -29,13 +31,15 @@ const suggestions = [
     'Resume el rendimiento del equipo comercial.',
 ];
 
+const fields = ['Monto', 'Región', 'Fecha', 'Producto', 'Cantidad', 'Vendedor', 'Equipo'];
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboards', href: '/dashboards' },
-    { title: 'Crear con IA', href: '/dashboards/create' },
+    { title: 'Nueva pregunta', href: '/dashboards/create' },
 ];
 
 const submit = () => {
-    if (form.processing || form.prompt.trim().length < 10) return;
+    if (!canSubmit.value) return;
 
     form.post(route('dashboards.store'), {
         preserveScroll: true,
@@ -49,9 +53,8 @@ const resizePrompt = async () => {
     if (!input) return;
 
     input.style.height = 'auto';
-    const nextHeight = Math.min(Math.max(input.scrollHeight, 88), 240);
-    input.style.height = `${nextHeight}px`;
-    input.style.overflowY = input.scrollHeight > 240 ? 'auto' : 'hidden';
+    input.style.height = `${Math.min(Math.max(input.scrollHeight, 120), 288)}px`;
+    input.style.overflowY = input.scrollHeight > 288 ? 'auto' : 'hidden';
 };
 
 const selectSuggestion = (suggestion: string) => {
@@ -67,153 +70,102 @@ const handlePromptKeydown = (event: KeyboardEvent) => {
 };
 
 watch(() => form.prompt, resizePrompt);
-onMounted(resizePrompt);
+onMounted(() => {
+    resizePrompt();
+    promptInput.value?.focus();
+});
 </script>
 
 <template>
-    <Head title="Crear dashboard" />
+    <Head title="Nueva pregunta" />
 
     <AppLayout :breadcrumbs="breadcrumbs" :current-tenant="currentTenant" :tenants="tenants">
-        <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-            <header class="motion-reveal relative overflow-hidden rounded-[1.5rem] border bg-card px-5 py-6 shadow-card sm:px-7">
-                <div
-                    class="pointer-events-none absolute -right-12 -top-16 size-52 rounded-full bg-[radial-gradient(circle,_hsl(var(--primary)/0.16)_1px,_transparent_1.5px)] bg-[length:14px_14px]"
-                    aria-hidden="true"
-                />
-                <div class="relative">
-                    <div class="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                        <span class="size-2 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/0.1)]" aria-hidden="true" />
-                        Nueva conversación analítica
-                    </div>
-                    <div class="mt-4 flex flex-wrap items-center gap-3">
-                        <h1 class="text-2xl font-bold tracking-tight text-foreground sm:text-h2">Convierte una pregunta en estructura</h1>
-                        <StatusBadge variant="primary">
-                            {{ provider === 'openai' ? 'Generador de IA' : 'Simulador local' }}
-                        </StatusBadge>
-                    </div>
-                    <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                        Empieza con lenguaje natural. InsightFlow organizará tu intención en métricas, dimensiones y visualizaciones listas para
-                        revisar.
-                    </p>
-                </div>
+        <main class="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+            <header class="motion-reveal">
+                <h1 class="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Nueva pregunta</h1>
+                <p class="mt-2 max-w-2xl text-base leading-7 text-muted-foreground">
+                    Cuéntanos qué quieres entender. Diseñamos el dashboard y lo calculamos con tus datos.
+                </p>
             </header>
 
-            <div
-                class="motion-reveal-delayed mt-5 flex items-start gap-3 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-sm text-foreground"
-                role="note"
-            >
-                <Sparkles class="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
-                <p>
-                    <template v-if="provider === 'openai'">
-                        <strong>Generación real de estructura.</strong> Aún no se están consultando datos reales. La IA está diseñando la estructura
-                        del dashboard con tu solicitud y el catálogo permitido de <code>demo_sales</code>; no recibe filas ni ejecuta consultas.
-                    </template>
-                    <template v-else>
-                        <strong>Estudio de demostración.</strong> El simulador local diseña la definición con <code>demo_sales</code>; no se consulta
-                        una base de datos ni se llama a OpenAI o Metabase.
-                    </template>
-                </p>
-            </div>
-
-            <form
-                class="motion-reveal-late relative mt-5 overflow-hidden rounded-[1.75rem] border border-primary/20 bg-card shadow-soft"
-                @submit.prevent="submit"
-            >
-                <div class="absolute left-0 top-14 h-24 w-1 rounded-r-full bg-primary" aria-hidden="true" />
-                <div class="flex items-center justify-between gap-4 border-b bg-primary-subtle/40 px-5 py-3 sm:px-7">
-                    <div class="flex items-center gap-2 text-xs font-semibold text-primary">
-                        <span class="flex gap-1" aria-hidden="true">
-                            <span class="size-1.5 rounded-full bg-primary/30" />
-                            <span class="size-1.5 rounded-full bg-primary/60" />
-                            <span class="size-1.5 rounded-full bg-primary" />
-                        </span>
-                        Lienzo de consulta
-                    </div>
-                    <span class="text-xs text-muted-foreground">{{ currentTenant.name }}</span>
-                </div>
-
-                <div class="px-5 pb-4 pt-5 sm:px-7">
-                    <AppLabel for="prompt" class="text-base font-semibold">¿Qué necesitas comprender?</AppLabel>
-                    <textarea
-                        id="prompt"
-                        ref="promptInput"
-                        v-model="form.prompt"
-                        rows="2"
-                        maxlength="2000"
-                        required
-                        autofocus
-                        :aria-invalid="Boolean(form.errors.prompt)"
-                        :aria-describedby="form.errors.prompt ? 'prompt-error prompt-help prompt-counter' : 'prompt-help prompt-counter'"
-                        class="mt-2 block min-h-[5.5rem] w-full resize-none border-0 bg-transparent p-0 text-base leading-7 text-foreground outline-none placeholder:text-muted-foreground focus:ring-0 sm:text-lg"
-                        placeholder="Ej.: Quiero entender cómo cambiaron las ventas por región durante el último trimestre…"
-                        @keydown="handlePromptKeydown"
-                    />
-                    <div class="mt-2 flex min-h-5 items-start justify-between gap-4">
-                        <InputError id="prompt-error" :message="form.errors.prompt" />
-                        <p id="prompt-counter" class="ml-auto shrink-0 text-xs text-muted-foreground" aria-live="polite">
-                            {{ form.prompt.length }} / 2000
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-3 border-t bg-muted/20 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-4">
-                    <AppButton
-                        type="submit"
-                        class="w-full min-w-44 shrink-0 sm:order-2 sm:w-auto"
-                        :loading="form.processing"
-                        :disabled="form.prompt.trim().length < 10"
-                    >
-                        <Sparkles aria-hidden="true" />
-                        {{ form.processing ? 'Dando forma…' : 'Generar dashboard' }}
-                    </AppButton>
-                    <p id="prompt-help" class="inline-flex items-center gap-2 text-xs text-muted-foreground sm:order-1">
-                        <CornerDownLeft class="size-3.5" aria-hidden="true" />
-                        Enter para generar · Shift + Enter para nueva línea
+            <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
+                <section class="motion-reveal-delayed" aria-label="Describe tu dashboard">
+                    <form class="insight-panel p-2 focus-within:border-primary/40" @submit.prevent="submit">
+                        <label for="prompt" class="sr-only">Describe el dashboard que necesitas</label>
+                        <textarea
+                            id="prompt"
+                            ref="promptInput"
+                            v-model="form.prompt"
+                            rows="4"
+                            maxlength="2000"
+                            class="min-h-[7.5rem] w-full resize-none border-0 bg-transparent px-4 pb-2 pt-4 text-lg leading-7 tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-0"
+                            placeholder="Por ejemplo: ventas por región del último trimestre, con la evolución mes a mes"
+                            :aria-invalid="form.errors.prompt ? 'true' : undefined"
+                            @keydown="handlePromptKeydown"
+                        />
+                        <div class="flex items-center justify-between gap-3 px-3 pb-2 pt-1">
+                            <span class="min-w-0 truncate text-xs text-muted-foreground">
+                                {{ providerLabel }}<template v-if="isExternalProvider && providerModel"> · {{ providerModel }}</template>
+                            </span>
+                            <button
+                                type="submit"
+                                :disabled="!canSubmit"
+                                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                                aria-label="Crear dashboard"
+                            >
+                                <LoaderCircle v-if="form.processing" class="size-5 animate-spin" aria-hidden="true" />
+                                <ArrowUp v-else class="size-5" aria-hidden="true" />
+                            </button>
+                        </div>
+                    </form>
+                    <InputError class="mt-2 px-2" :message="form.errors.prompt" />
+                    <p v-if="form.processing" class="mt-3 px-2 text-sm text-muted-foreground" role="status">
+                        Diseñando tu dashboard… puede tardar unos segundos.
                     </p>
-                </div>
-            </form>
 
-            <div class="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.6fr)]">
-                <fieldset class="rounded-2xl border bg-card p-5 shadow-card sm:p-6">
-                    <legend class="px-2 text-sm font-semibold text-foreground">Puntos de partida</legend>
-                    <p class="mb-4 text-sm text-muted-foreground">No son plantillas rígidas: elige una y hazla tuya.</p>
-                    <div class="grid gap-3 sm:grid-cols-2">
+                    <p class="mt-6 px-1 text-sm font-medium text-foreground">Ideas para empezar</p>
+                    <div class="mt-3 grid gap-2 sm:grid-cols-2">
                         <button
                             v-for="suggestion in suggestions"
                             :key="suggestion"
                             type="button"
-                            class="group relative min-h-20 overflow-hidden rounded-xl border bg-background px-4 py-3 text-left text-sm text-foreground transition-colors before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r before:bg-primary before:opacity-0 before:transition-opacity hover:border-primary/40 hover:bg-primary-subtle/50 hover:before:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            class="rounded-xl border bg-card px-4 py-3 text-left text-sm leading-5 text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             @click="selectSuggestion(suggestion)"
                         >
-                            <Sparkles class="mb-2 size-4 text-primary transition-transform group-hover:-rotate-12" aria-hidden="true" />
                             {{ suggestion }}
                         </button>
                     </div>
-                </fieldset>
-
-                <section class="rounded-2xl border bg-card p-5 shadow-card sm:p-6" aria-labelledby="data-source-title">
-                    <div class="flex items-center gap-3">
-                        <span class="flex size-10 items-center justify-center rounded-xl bg-primary-subtle text-primary">
-                            <Database class="size-5" aria-hidden="true" />
-                        </span>
-                        <div>
-                            <h2 id="data-source-title" class="text-sm font-semibold text-foreground">Contexto de datos</h2>
-                            <p class="text-xs text-muted-foreground">Sólo una referencia estructural</p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        class="mt-5 flex min-h-20 w-full cursor-not-allowed flex-col justify-center rounded-xl border border-dashed bg-muted/30 px-4 text-left text-sm text-muted-foreground"
-                        disabled
-                    >
-                        <strong class="font-mono text-xs font-semibold text-foreground">demo_sales</strong>
-                        <span class="mt-1 leading-5">Las conexiones reales llegarán en una fase posterior.</span>
-                    </button>
-                    <p class="mt-4 text-xs leading-5 text-muted-foreground">Guardamos el prompt y el spec validado, nunca razonamientos internos.</p>
-                    <p v-if="provider === 'openai' && providerModel" class="mt-2 font-mono text-[0.7rem] text-muted-foreground">
-                        Modelo: {{ providerModel }}
-                    </p>
                 </section>
+
+                <aside class="motion-reveal-late space-y-4" aria-label="Datos disponibles">
+                    <div class="rounded-2xl border bg-card p-5">
+                        <div class="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <Database class="size-4 text-primary" aria-hidden="true" />
+                            Datos de ejemplo
+                        </div>
+                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                            Ventas de los últimos 12 meses de tu organización. Puedes preguntar por:
+                        </p>
+                        <ul class="mt-3 flex flex-wrap gap-1.5">
+                            <li v-for="field in fields" :key="field" class="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                                {{ field }}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="rounded-2xl border bg-card p-5">
+                        <div class="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <ShieldCheck class="size-4 text-primary" aria-hidden="true" />
+                            Tus datos se quedan aquí
+                        </div>
+                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                            La IA solo recibe tu pregunta y los nombres de los campos, nunca las filas. Los números se calculan en tu servidor.
+                        </p>
+                        <p v-if="provider === 'gemini'" class="mt-3 text-xs leading-5 text-muted-foreground">
+                            Con el plan gratuito de Gemini, Google puede usar lo que escribas para mejorar sus productos: evita datos personales o
+                            confidenciales.
+                        </p>
+                    </div>
+                </aside>
             </div>
         </main>
     </AppLayout>

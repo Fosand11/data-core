@@ -32,7 +32,7 @@ const submit = () => {
     <AuthBase
         title="Bienvenido de nuevo"
         description="Ingresa tus credenciales para acceder a tus dashboards."
-        promo-title="De datos crudos a dashboards listos para presentar"
+        promo-title="Tus preguntas, convertidas en dashboards"
     >
         <Head title="Iniciar sesión" />
 

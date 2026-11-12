@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import MobileNavigation from '@/components/MobileNavigation.vue';
 import TenantSwitcher from '@/components/TenantSwitcher.vue';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useCommandPalette } from '@/composables/useCommandPalette';
 import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
-import { Link } from '@inertiajs/vue3';
-import { Command, Plus, Search } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Search } from 'lucide-vue-next';
 
-const props = withDefaults(
+// Breadcrumbs stay in the contract (pages still pass them) but the header no longer renders a title:
+// every page owns its heading.
+withDefaults(
     defineProps<{
         breadcrumbs?: BreadcrumbItem[];
         currentTenant?: CurrentTenant | null;
@@ -21,58 +20,27 @@ const props = withDefaults(
     },
 );
 
-const pageTitle = computed(() => props.breadcrumbs.at(-1)?.title ?? 'Inicio');
+const { show } = useCommandPalette();
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 </script>
 
 <template>
     <header
-        class="sticky top-0 z-30 flex min-h-[4.5rem] shrink-0 flex-wrap items-center gap-3 border-b border-border/70 bg-background/85 px-4 backdrop-blur-xl sm:px-6 min-[769px]:flex-nowrap"
+        class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/75 px-4 backdrop-blur-xl backdrop-saturate-150 sm:px-6 print:hidden"
     >
         <MobileNavigation />
+        <TenantSwitcher v-if="tenants.length" :current-tenant="currentTenant" :tenants="tenants" />
 
-        <div class="hidden min-w-0 items-center gap-4 min-[769px]:flex">
-            <div class="min-w-0">
-                <span class="block text-[0.6rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Vista actual</span>
-                <p class="truncate text-sm font-semibold text-foreground">{{ pageTitle }}</p>
-            </div>
-            <span v-if="tenants.length" class="h-7 w-px bg-border" aria-hidden="true" />
-            <TenantSwitcher v-if="tenants.length" :current-tenant="currentTenant" :tenants="tenants" />
-        </div>
-
-        <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
-            <div class="relative hidden lg:block">
-                <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <input
-                    type="search"
-                    class="h-10 w-64 rounded-full border border-border/80 bg-card/70 pl-9 pr-12 text-sm text-muted-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.8)] transition-colors hover:border-primary/25"
-                    placeholder="Buscar en el estudio..."
-                    aria-label="Búsqueda disponible próximamente"
-                    title="Búsqueda disponible próximamente"
-                    disabled
-                />
-                <span
-                    class="pointer-events-none absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-md border bg-background px-1.5 py-1 text-[0.6rem] font-semibold text-muted-foreground"
-                >
-                    <Command class="size-2.5" aria-hidden="true" /> K
-                </span>
-            </div>
-
-            <Link
-                :href="route('dashboards.create')"
-                :class="
-                    cn(
-                        buttonVariants(),
-                        'hidden rounded-full px-5 shadow-[0_8px_22px_-10px_hsl(var(--primary))] transition-transform duration-300 hover:-translate-y-0.5 sm:inline-flex',
-                    )
-                "
-            >
-                <Plus aria-hidden="true" />
-                Nueva pregunta
-            </Link>
-        </div>
-
-        <div v-if="tenants.length" class="w-full border-t py-3 min-[769px]:hidden">
-            <TenantSwitcher :current-tenant="currentTenant" :tenants="tenants" />
-        </div>
+        <button
+            type="button"
+            class="ml-auto flex h-9 items-center gap-2 rounded-full border border-border/80 bg-card/70 px-3.5 text-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-64 sm:justify-start"
+            aria-label="Buscar (abrir paleta de comandos)"
+            aria-haspopup="dialog"
+            @click="show"
+        >
+            <Search class="size-4 shrink-0" aria-hidden="true" />
+            <span class="hidden flex-1 text-left sm:inline">Buscar…</span>
+            <kbd class="hidden rounded-md border bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium sm:inline">{{ isMac ? '⌘' : 'Ctrl' }} K</kbd>
+        </button>
     </header>
 </template>

@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import DashboardSpecPreview from '@/components/DashboardSpecPreview.vue';
+import DashboardCanvas from '@/components/dashboard/DashboardCanvas.vue';
+import DashboardActions from '@/components/DashboardActions.vue';
 import DashboardStatusBadge from '@/components/DashboardStatusBadge.vue';
+import ExportMenu from '@/components/ExportMenu.vue';
+import PeriodPicker from '@/components/PeriodPicker.vue';
+import RefineBox from '@/components/RefineBox.vue';
+import RefinementBar from '@/components/RefinementBar.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { Skeleton } from '@/components/ui/skeleton';
+import VersionHistory from '@/components/VersionHistory.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { BreadcrumbItem, CurrentTenant, DashboardDetail, TenantOption } from '@/types';
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Clock3, Code2, Sparkles, TriangleAlert } from 'lucide-vue-next';
-import { computed, onUnmounted, watch } from 'vue';
+import { describeFilter } from '@/lib/labels';
+import type {
+    BreadcrumbItem,
+    CurrentTenant,
+    DashboardDetail,
+    DashboardPeriodInfo,
+    DashboardVersionEntry,
+    ExportContext,
+    RefinementState,
+    TenantOption,
+    VisualizationData,
+} from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { ChevronLeft, Code2, Database, Sparkles, TriangleAlert } from 'lucide-vue-next';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     currentTenant: CurrentTenant;
     tenants: TenantOption[];
     dashboard: DashboardDetail;
+    period: DashboardPeriodInfo;
+    refinement: RefinementState | null;
+    versions: DashboardVersionEntry[];
+    visualizationData?: VisualizationData | null;
+    proposalData?: VisualizationData | null;
 }>();
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => [
@@ -25,7 +47,108 @@ const createdAt = computed(() =>
 );
 
 const technicalSpec = computed(() => JSON.stringify(props.dashboard.dashboard_spec, null, 2));
+const technicalDetails = computed(() =>
+    [
+        ['Proveedor', props.dashboard.provider],
+        ['Modelo', props.dashboard.generation?.model],
+        ['Contrato', props.dashboard.spec_version ? `DashboardSpec ${props.dashboard.spec_version}` : null],
+    ].filter((detail): detail is [string, string] => Boolean(detail[1])),
+);
+// While a proposal is ready the page can show it in place of the live dashboard, with its own data.
+const viewing = ref<'proposal' | 'current'>('proposal');
+const previewing = computed(
+    () =>
+        props.refinement?.status === 'completed' &&
+        !props.refinement.is_stale &&
+        viewing.value === 'proposal' &&
+        props.refinement.proposed_spec !== null,
+);
+const shownSpec = computed(() => (previewing.value ? props.refinement!.proposed_spec : props.dashboard.dashboard_spec));
+const shownData = computed(() => (previewing.value ? props.proposalData : props.visualizationData));
+const refinementRunning = computed(() => props.refinement?.status === 'queued' || props.refinement?.status === 'processing');
+const refinementLocked = computed(() => props.refinement !== null && props.refinement.status !== 'failed');
+watch(
+    () => props.refinement?.id,
+    () => (viewing.value = 'proposal'),
+);
+
+const page = usePage();
+const actionError = computed(() => {
+    const errors = page.props.errors as Record<string, string | undefined>;
+
+    return errors.refinement ?? errors.version ?? errors.dashboard ?? null;
+});
+const resolving = ref(false);
+const resolveOptions = { preserveScroll: true, onFinish: () => (resolving.value = false) };
+
+const applyRefinement = () => {
+    if (!props.refinement) return;
+
+    resolving.value = true;
+    router.post(route('dashboards.refinements.apply', { dashboard: props.dashboard.id, refinement: props.refinement.id }), {}, resolveOptions);
+};
+const discardRefinement = () => {
+    if (!props.refinement) return;
+
+    resolving.value = true;
+    router.delete(route('dashboards.refinements.discard', { dashboard: props.dashboard.id, refinement: props.refinement.id }), resolveOptions);
+};
+const restoreVersion = (number: number) => {
+    resolving.value = true;
+    router.post(route('dashboards.versions.restore', { dashboard: props.dashboard.id, number }), {}, resolveOptions);
+};
+
+// A period replaces the dashboard's own date filters, so those chips would be misleading.
+const visibleFilters = computed(() =>
+    (shownSpec.value?.global_filters ?? []).filter((filter) => !(props.period.overrides_spec && filter.field === props.period.date_field)),
+);
+
+// What the period means in words, for the files that leave the app.
+const periodCaption = computed(() => {
+    if (props.period.overrides_spec) return props.period.label;
+
+    return visibleFilters.value.map(describeFilter).join(' · ') || 'Todo el periodo';
+});
+// "Fecha: trimestre anterior" already names the field, so it reads "Periodo: trimestre anterior" on paper.
+const printPeriod = computed(() =>
+    periodCaption.value.startsWith('Fecha: ') ? periodCaption.value.replace('Fecha: ', 'Periodo: ') : `Periodo: ${periodCaption.value}`,
+);
+const exportContext = computed<ExportContext>(() => ({
+    title: props.dashboard.title,
+    description: props.dashboard.description,
+    periodLabel: periodCaption.value,
+}));
+
+const refreshing = ref(false);
+const selectPeriod = (value: string) => {
+    router.get(route('dashboards.show', { dashboard: props.dashboard.id }), value === 'spec' ? {} : { period: value }, {
+        only: ['period', 'visualizationData', 'proposalData'],
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onStart: () => (refreshing.value = true),
+        onFinish: () => (refreshing.value = false),
+    });
+};
+
 const isProcessing = computed(() => props.dashboard.status === 'queued' || props.dashboard.status === 'generating');
+
+// A proposal that is still being prepared refreshes itself, like the dashboard does while it is generated.
+let refinementTimer: ReturnType<typeof setInterval> | undefined;
+const stopRefinementPolling = () => {
+    if (refinementTimer !== undefined) clearInterval(refinementTimer);
+    refinementTimer = undefined;
+};
+watch(
+    refinementRunning,
+    (running) => {
+        stopRefinementPolling();
+
+        if (running) refinementTimer = setInterval(() => router.reload({ only: ['refinement', 'proposalData', 'versions'] }), 2500);
+    },
+    { immediate: true },
+);
+onUnmounted(stopRefinementPolling);
 let pollingTimer: ReturnType<typeof setInterval> | undefined;
 
 const stopPolling = () => {
@@ -42,7 +165,7 @@ watch(
 
         if (isProcessing.value) {
             pollingTimer = setInterval(() => {
-                router.reload({ only: ['dashboard'] });
+                router.reload({ only: ['dashboard', 'visualizationData'] });
             }, 2500);
         }
     },
@@ -56,76 +179,61 @@ onUnmounted(stopPolling);
     <Head :title="dashboard.title" />
 
     <AppLayout :breadcrumbs="breadcrumbs" :current-tenant="currentTenant" :tenants="tenants">
-        <main class="mx-auto w-full max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <main class="mx-auto w-full max-w-[1400px] px-4 pb-20 pt-8 sm:px-6 lg:px-8 print:p-0">
             <Link
                 href="/dashboards"
-                class="motion-reveal inline-flex min-h-11 items-center gap-2 rounded-full border bg-card px-4 text-sm font-medium text-muted-foreground shadow-card transition-all duration-300 hover:-translate-x-0.5 hover:border-primary/20 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                class="motion-reveal -ml-1 inline-flex items-center gap-0.5 rounded-md px-1 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden"
             >
-                <ArrowLeft class="size-4" aria-hidden="true" />
-                Volver a dashboards
+                <ChevronLeft class="size-4" aria-hidden="true" />
+                Dashboards
             </Link>
 
-            <header class="motion-reveal-delayed mt-7 border-b border-border/70 pb-8">
-                <div class="min-w-0">
-                    <p class="editorial-kicker">Pieza analítica</p>
-                    <div class="mt-4 flex flex-wrap items-center gap-3">
-                        <h1 class="max-w-5xl text-3xl font-bold tracking-[-0.045em] text-foreground sm:text-5xl">{{ dashboard.title }}</h1>
-                        <DashboardStatusBadge :status="dashboard.status" />
+            <header class="motion-reveal-delayed mt-4">
+                <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+                    <div class="flex min-w-0 flex-wrap items-center gap-3">
+                        <h1 class="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">{{ dashboard.title }}</h1>
+                        <DashboardStatusBadge class="print:hidden" :status="dashboard.status" />
                     </div>
-                    <p v-if="dashboard.description" class="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">{{ dashboard.description }}</p>
-                    <div class="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-                        <span class="inline-flex items-center gap-1.5"><Clock3 class="size-4" aria-hidden="true" />{{ createdAt }}</span>
-                        <span v-if="dashboard.author">Creado por {{ dashboard.author.name }}</span>
-                        <span v-if="dashboard.provider">provider: {{ dashboard.provider }}</span>
-                        <span v-if="dashboard.generation?.model">Modelo: {{ dashboard.generation.model }}</span>
-                        <span v-if="dashboard.spec_version">Spec: {{ dashboard.spec_version }}</span>
-                    </div>
+                    <DashboardActions class="print:hidden" :dashboard="dashboard" :versions="versions" />
+                </div>
+                <p v-if="dashboard.description" class="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{{ dashboard.description }}</p>
+                <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+                    <span>{{ createdAt }}</span>
+                    <span v-if="dashboard.author">{{ dashboard.author.name }}</span>
+                    <span class="inline-flex items-center gap-1.5"><Database class="size-3.5" aria-hidden="true" /> Datos de ejemplo</span>
                 </div>
             </header>
 
             <section
-                class="motion-reveal-late insight-panel mt-7 grid gap-5 p-5 sm:grid-cols-[auto_1fr] sm:p-7"
-                aria-labelledby="original-prompt-title"
+                v-if="dashboard.original_prompt"
+                class="motion-reveal-late mt-6 rounded-2xl bg-muted/70 px-5 py-4 print:hidden"
+                aria-label="Pregunta original"
             >
-                <div
-                    class="flex size-12 items-center justify-center rounded-full bg-primary text-white shadow-[0_8px_20px_-10px_hsl(var(--primary))]"
-                >
-                    <Sparkles class="size-5" aria-hidden="true" />
-                </div>
-                <div>
-                    <h2 id="original-prompt-title" class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-primary">
-                        La pregunta que inició todo
-                    </h2>
-                    <blockquote class="mt-3 whitespace-pre-wrap text-lg font-medium leading-7 tracking-tight text-foreground sm:text-xl">
-                        “{{ dashboard.original_prompt || 'No disponible para este dashboard heredado.' }}”
-                    </blockquote>
-                </div>
+                <p class="text-xs font-medium text-muted-foreground">Tu pregunta</p>
+                <blockquote class="mt-1 whitespace-pre-wrap text-base leading-7 text-foreground">“{{ dashboard.original_prompt }}”</blockquote>
             </section>
 
-            <section
-                v-if="isProcessing"
-                class="mt-7 overflow-hidden rounded-[1.5rem] border bg-card p-6 shadow-card"
-                aria-live="polite"
-                aria-busy="true"
-            >
+            <section v-if="isProcessing" class="mt-8" aria-live="polite" aria-busy="true">
                 <div class="flex items-center gap-3">
-                    <span class="flex size-10 items-center justify-center rounded-lg bg-primary-subtle text-primary">
-                        <Sparkles class="motion-soft-pulse size-5" aria-hidden="true" />
+                    <span class="flex size-9 items-center justify-center rounded-xl bg-primary-subtle text-primary">
+                        <Sparkles class="size-[1.1rem] animate-pulse" aria-hidden="true" />
                     </span>
                     <div>
                         <h2 class="font-semibold text-foreground">
-                            {{ dashboard.status === 'queued' ? 'Generación en cola' : 'Construyendo DashboardSpec' }}
+                            {{ dashboard.status === 'queued' ? 'Preparando tu dashboard' : 'Diseñando el dashboard' }}
                         </h2>
-                        <p class="mt-1 text-sm text-muted-foreground">Esta página se actualizará automáticamente hasta finalizar.</p>
+                        <p class="text-sm text-muted-foreground">Esta página se actualiza sola cuando termine.</p>
                     </div>
                 </div>
-                <div class="mt-6 grid gap-4 md:grid-cols-2">
-                    <Skeleton class="h-44 rounded-xl" />
-                    <Skeleton class="h-44 rounded-xl" />
+                <div class="mt-6 grid gap-4 md:grid-cols-3">
+                    <Skeleton class="h-32 rounded-2xl" />
+                    <Skeleton class="h-32 rounded-2xl" />
+                    <Skeleton class="h-32 rounded-2xl" />
+                    <Skeleton class="h-64 rounded-2xl md:col-span-3" />
                 </div>
             </section>
 
-            <section v-else-if="dashboard.status === 'failed'" class="mt-7 rounded-xl border border-error/20 bg-error/10 p-5" role="alert">
+            <section v-else-if="dashboard.status === 'failed'" class="mt-8 rounded-2xl border border-error/25 bg-error/10 p-5" role="alert">
                 <div class="flex items-start gap-3">
                     <TriangleAlert class="mt-0.5 size-5 shrink-0 text-error" aria-hidden="true" />
                     <div>
@@ -137,23 +245,65 @@ onUnmounted(stopPolling);
                 </div>
             </section>
 
-            <div v-else-if="dashboard.status === 'archived'" class="mt-7 rounded-xl border bg-card p-5">
-                <p class="text-sm text-muted-foreground">Este dashboard proviene de una fase anterior y no contiene un DashboardSpec.</p>
+            <div v-else-if="dashboard.status === 'archived'" class="mt-8 rounded-2xl border bg-card p-5">
+                <p class="text-sm text-muted-foreground">Este dashboard proviene de una versión anterior y no contiene visualizaciones.</p>
             </div>
 
-            <div v-else-if="dashboard.dashboard_spec" class="mt-8">
-                <DashboardSpecPreview :spec="dashboard.dashboard_spec" />
+            <div v-else-if="shownSpec" class="mt-8">
+                <p v-if="actionError" class="mb-4 rounded-xl border border-error/25 bg-error/10 px-4 py-3 text-sm text-foreground" role="alert">
+                    {{ actionError }}
+                </p>
 
-                <details class="mt-8 overflow-hidden rounded-[1.25rem] border bg-card shadow-card">
+                <RefineBox v-if="dashboard.can.refine" class="mb-5 print:hidden" :dashboard-id="dashboard.id" :locked="refinementLocked" />
+                <RefinementBar
+                    v-if="refinement"
+                    v-model:viewing="viewing"
+                    class="mb-5 print:hidden"
+                    :refinement="refinement"
+                    :busy="resolving"
+                    @apply="applyRefinement"
+                    @discard="discardRefinement"
+                />
+
+                <div class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <PeriodPicker class="print:hidden" :period="period" :busy="refreshing" @select="selectPeriod" />
+                    <p class="hidden text-sm text-muted-foreground print:block">{{ printPeriod }}</p>
+                    <div v-if="visibleFilters.length" class="flex flex-wrap items-center gap-2 print:hidden" aria-label="Filtros del dashboard">
+                        <StatusBadge v-for="filter in visibleFilters" :key="`${filter.field}-${filter.operator}`">
+                            {{ describeFilter(filter) }}
+                        </StatusBadge>
+                    </div>
+                    <ExportMenu class="ml-auto" :spec="shownSpec" :data="shownData" :context="exportContext" :disabled="previewing" />
+                </div>
+
+                <div :class="['transition-opacity duration-200', refreshing ? 'opacity-50' : '']" :aria-busy="refreshing">
+                    <DashboardCanvas :key="previewing ? 'proposal' : 'current'" :spec="shownSpec" :data="shownData" :export-context="exportContext" />
+                </div>
+
+                <VersionHistory
+                    v-if="versions.length > 1"
+                    class="mt-10 print:hidden"
+                    :versions="versions"
+                    :can-restore="dashboard.can.refine"
+                    :busy="resolving"
+                    @restore="restoreVersion"
+                />
+
+                <details class="mt-4 overflow-hidden rounded-2xl border bg-card print:hidden">
                     <summary
-                        class="flex min-h-14 cursor-pointer list-none items-center gap-2 px-5 font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                        class="flex min-h-12 cursor-pointer list-none items-center gap-2 px-5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     >
-                        <Code2 class="size-4 text-primary" aria-hidden="true" />
-                        DashboardSpec técnico
-                        <StatusBadge variant="primary" class="ml-auto">JSON validado</StatusBadge>
+                        <Code2 class="size-4" aria-hidden="true" />
+                        Detalles técnicos
                     </summary>
+                    <dl v-if="technicalDetails.length" class="flex flex-wrap gap-x-8 gap-y-2 border-t px-5 py-4 text-sm">
+                        <div v-for="[label, value] in technicalDetails" :key="label">
+                            <dt class="text-xs text-muted-foreground">{{ label }}</dt>
+                            <dd class="font-medium text-foreground">{{ value }}</dd>
+                        </div>
+                    </dl>
                     <pre
-                        class="max-h-[32rem] overflow-auto border-t bg-slate-950 p-5 text-xs leading-5 text-slate-100"
+                        class="max-h-[28rem] overflow-auto border-t bg-muted/60 p-5 text-xs leading-5 text-foreground"
                     ><code>{{ technicalSpec }}</code></pre>
                 </details>
             </div>

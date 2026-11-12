@@ -27,7 +27,7 @@ const submit = () => {
     <AuthBase
         title="Crea tu cuenta"
         description="Empieza a preparar tu espacio de analítica para trabajar con tu equipo."
-        promo-title="Analítica clara y unificada para todo tu equipo"
+        promo-title="Empieza con una sola pregunta"
     >
         <Head title="Crear cuenta" />
 

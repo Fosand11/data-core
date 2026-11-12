@@ -29,12 +29,11 @@ const currentPath = computed(() => page.url.split('?')[0]);
 </script>
 
 <template>
-    <main class="mx-auto w-full max-w-[1380px] px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <header class="motion-reveal border-b border-border/70 pb-7">
-            <p class="editorial-kicker">Tu espacio personal</p>
-            <h1 class="mt-4 text-4xl font-bold tracking-[-0.045em] text-foreground sm:text-5xl">Ajustes con intención.</h1>
-            <p class="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Configura cómo te identificas, cómo accedes y cómo prefieres ver InsightFlow.
+    <main class="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-6 sm:pt-14">
+        <header class="motion-reveal">
+            <h1 class="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Configuración</h1>
+            <p class="mt-2 max-w-2xl text-base leading-7 text-muted-foreground">
+                Cómo te identificas, cómo accedes y cómo prefieres ver InsightFlow.
             </p>
         </header>
 
@@ -55,8 +54,8 @@ const currentPath = computed(() => page.url.split('?')[0]);
                     >
                         <span
                             :class="[
-                                'flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:-rotate-3',
-                                currentPath === item.href ? 'bg-primary text-white' : 'bg-muted text-muted-foreground',
+                                'flex size-10 shrink-0 items-center justify-center rounded-xl',
+                                currentPath === item.href ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
                             ]"
                         >
                             <component :is="item.icon" class="size-4.5" aria-hidden="true" />

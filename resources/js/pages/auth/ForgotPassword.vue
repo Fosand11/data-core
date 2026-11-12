@@ -25,7 +25,7 @@ const submit = () => {
     <AuthLayout
         title="Recupera tu contraseña"
         description="Ingresa tu correo electrónico registrado y te enviaremos instrucciones para restablecerla."
-        promo-title="Monitorea la información importante sin perder claridad"
+        promo-title="Recupera el acceso en un minuto"
     >
         <Head title="Recuperar contraseña" />
 
