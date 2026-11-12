@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Dashboards\Actions\SeedDemoSales;
 use App\Domain\Tenancy\Enums\TenantRole;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -13,7 +14,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(): void
+    public function run(SeedDemoSales $seedDemoSales): void
     {
         $primaryTenant = Tenant::factory()->create([
             'name' => 'Demo Organization',
@@ -36,5 +37,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $secondaryTenant->attachUser($member, TenantRole::Admin);
+
+        $seedDemoSales->execute($primaryTenant);
+        $seedDemoSales->execute($secondaryTenant, 300);
     }
 }

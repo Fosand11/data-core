@@ -6,6 +6,7 @@ use App\Domain\Ai\Contracts\DashboardGenerator;
 use App\Domain\Ai\Data\DashboardGenerationInput;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Providers\FakeDashboardGenerator;
+use App\Domain\Ai\Providers\OpenAiDashboardGenerator;
 use App\Domain\Ai\Providers\UnsupportedDashboardGenerator;
 use App\Domain\Ai\Validation\DashboardSpecValidator;
 use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
@@ -18,6 +19,7 @@ use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -42,6 +44,37 @@ class DashboardGenerationTest extends TestCase
     public function test_missing_driver_resolves_to_safe_unsupported_provider(): void
     {
         config(['dashboard-ai.driver' => null]);
+
+        $this->assertInstanceOf(UnsupportedDashboardGenerator::class, app(DashboardGenerator::class));
+    }
+
+    public function test_openai_driver_and_model_are_selected_from_configuration(): void
+    {
+        config([
+            'dashboard-ai.driver' => 'openai',
+            'dashboard-ai.openai.api_key' => 'test-only-key',
+            'dashboard-ai.openai.model' => 'gpt-configured-model',
+        ]);
+
+        $generator = app(DashboardGenerator::class);
+
+        $this->assertInstanceOf(OpenAiDashboardGenerator::class, $generator);
+        $this->assertSame('openai', $generator->provider());
+        $this->assertSame('gpt-configured-model', $generator->model());
+
+        [$tenant, $user] = $this->ownerContext();
+        $this->actingAs($user)
+            ->get(route('dashboards.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('currentTenant.slug', $tenant->slug)
+                ->where('provider', 'openai')
+                ->where('providerModel', 'gpt-configured-model'));
+    }
+
+    public function test_unknown_driver_never_falls_back_to_fake_or_openai(): void
+    {
+        config(['dashboard-ai.driver' => 'unknown-provider']);
 
         $this->assertInstanceOf(UnsupportedDashboardGenerator::class, app(DashboardGenerator::class));
     }
@@ -86,6 +119,24 @@ class DashboardGenerationTest extends TestCase
         $this->assertNotSame($tenant->getKey(), $foreignTenant->getKey());
     }
 
+    public function test_generation_requests_are_rate_limited_per_user(): void
+    {
+        Queue::fake();
+        config()->set('dashboard-ai.rate_limit.per_minute', 2);
+        [, $user] = $this->ownerContext();
+        [, $otherUser] = $this->ownerContext();
+        $payload = ['prompt' => 'Muéstrame las ventas por región del último trimestre.'];
+
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertStatus(429);
+
+        $this->assertDatabaseCount('dashboards', 2);
+
+        $this->actingAs($otherUser)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->assertDatabaseCount('dashboards', 3);
+    }
+
     public function test_real_job_transitions_from_queued_through_generating_to_ready(): void
     {
         [$tenant, $user] = $this->ownerContext();
@@ -118,7 +169,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertTrue($observingGenerator->observedGenerating);
         $this->assertSame(DashboardStatus::Ready, $dashboard->refresh()->status);
-        $this->assertSame('1.0', $dashboard->spec_version);
+        $this->assertSame('1.1', $dashboard->spec_version);
         $this->assertNotNull($dashboard->dashboard_spec);
         $this->assertSame(DashboardGenerationStatus::Completed, $generation->refresh()->status);
         $this->assertSame($dashboard->dashboard_spec, $generation->validated_spec);
@@ -133,7 +184,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertSame(DashboardStatus::Failed, $dashboard->refresh()->status);
         $this->assertSame(DashboardGenerationStatus::Failed, $generation->refresh()->status);
-        $this->assertSame('unsupported_provider', $generation->error_code);
+        $this->assertSame('UNSUPPORTED_PROVIDER', $generation->error_code);
         $this->assertNotNull($dashboard->error_message);
     }
 
@@ -159,7 +210,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertSame(DashboardStatus::Failed, $dashboard->refresh()->status);
         $this->assertNull($dashboard->dashboard_spec);
-        $this->assertSame('invalid_dashboard_spec', $generation->refresh()->error_code);
+        $this->assertSame('DASHBOARD_SPEC_INVALID', $generation->refresh()->error_code);
         $this->assertNull($generation->validated_spec);
     }
 
@@ -194,6 +245,72 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertSame(1, $countingGenerator->calls);
         $this->assertSame(DashboardStatus::Ready, $dashboard->refresh()->status);
+    }
+
+    public function test_openai_authentication_failure_is_persisted_safely_with_the_model_used(): void
+    {
+        [$tenant, $user] = $this->ownerContext();
+        [$dashboard, $generation] = $this->queuedGeneration($tenant, $user, 'openai');
+        $secret = 'test-api-key-sensitive-value';
+        config([
+            'dashboard-ai.driver' => 'openai',
+            'dashboard-ai.openai.api_key' => $secret,
+            'dashboard-ai.openai.model' => 'gpt-test-model',
+            'dashboard-ai.openai.max_retries' => 0,
+        ]);
+        Http::fake([
+            'api.openai.com/v1/responses' => Http::response(['error' => ['message' => "invalid {$secret}"]], 401),
+        ]);
+
+        (new GenerateDashboardJob($generation->getKey()))->handle(app(DashboardGenerator::class), new DashboardSpecValidator);
+
+        $this->assertSame(DashboardStatus::Failed, $dashboard->refresh()->status);
+        $this->assertNull($dashboard->dashboard_spec);
+        $this->assertSame(DashboardGenerationStatus::Failed, $generation->refresh()->status);
+        $this->assertSame('OPENAI_AUTHENTICATION_FAILED', $generation->error_code);
+        $this->assertSame('gpt-test-model', $generation->model);
+        $this->assertStringNotContainsString($secret, (string) $generation->error_message);
+        $this->assertStringNotContainsString($secret, (string) $dashboard->error_message);
+
+        $this->actingAs($user)
+            ->get(route('dashboards.show', $dashboard))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.generation.provider', 'openai')
+                ->where('dashboard.generation.model', 'gpt-test-model'));
+    }
+
+    public function test_openai_output_still_passes_through_domain_catalog_validation(): void
+    {
+        [$tenant, $user] = $this->ownerContext();
+        [$dashboard, $generation] = $this->queuedGeneration($tenant, $user, 'openai');
+        config([
+            'dashboard-ai.driver' => 'openai',
+            'dashboard-ai.openai.api_key' => 'test-only-key',
+            'dashboard-ai.openai.max_retries' => 0,
+        ]);
+        $definition = (new FakeDashboardGenerator)
+            ->generate(new DashboardGenerationInput($tenant->getKey(), (int) $user->getKey(), 'ventas por región'))
+            ->toArray();
+        $definition['visualizations'][0]['query']['metrics'][0]['field'] = 'invented_revenue';
+        Http::fake([
+            'api.openai.com/v1/responses' => Http::response([
+                'status' => 'completed',
+                'output' => [[
+                    'type' => 'message',
+                    'content' => [[
+                        'type' => 'output_text',
+                        'text' => json_encode($definition, JSON_THROW_ON_ERROR),
+                    ]],
+                ]],
+            ], 200),
+        ]);
+
+        (new GenerateDashboardJob($generation->getKey()))->handle(app(DashboardGenerator::class), new DashboardSpecValidator);
+
+        $this->assertSame(DashboardStatus::Failed, $dashboard->refresh()->status);
+        $this->assertSame('DASHBOARD_SPEC_INVALID', $generation->refresh()->error_code);
+        $this->assertNull($generation->validated_spec);
     }
 
     public function test_user_cannot_view_or_modify_dashboard_from_another_tenant(): void

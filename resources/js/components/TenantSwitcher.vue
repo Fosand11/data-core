@@ -34,17 +34,18 @@ function selectTenant(event: Event): void {
 </script>
 
 <template>
-    <label v-if="tenants.length" class="group relative flex w-full min-w-0 items-center min-[769px]:w-auto">
+    <label v-if="tenants.length" class="group relative flex min-w-0 items-center">
         <span class="sr-only">Organización actual</span>
         <span
-            class="pointer-events-none absolute left-2.5 flex size-7 items-center justify-center rounded-full bg-primary-subtle text-[0.65rem] font-bold uppercase text-primary"
+            class="pointer-events-none absolute left-2 flex size-6 items-center justify-center rounded-md bg-primary-subtle text-[0.65rem] font-semibold uppercase text-primary"
+            aria-hidden="true"
         >
             {{ currentTenant?.name.slice(0, 1) ?? '—' }}
         </span>
         <select
             :value="selectedSlug"
             :disabled="selecting"
-            class="h-11 w-full min-w-0 appearance-none rounded-full border border-border/80 bg-card/75 py-2 pl-11 pr-9 text-sm font-semibold text-foreground shadow-sm transition-all hover:border-primary/30 hover:bg-card focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15 min-[769px]:w-56"
+            class="h-9 w-full min-w-0 max-w-[13rem] cursor-pointer appearance-none rounded-lg border-0 bg-transparent py-1 pl-10 pr-8 text-sm font-medium text-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Cambiar organización"
             @change="selectTenant"
         >
@@ -52,9 +53,6 @@ function selectTenant(event: Event): void {
                 {{ tenant.name }}
             </option>
         </select>
-        <ChevronDown
-            class="pointer-events-none absolute right-3 size-4 text-muted-foreground transition-transform duration-300 group-focus-within:rotate-180"
-            aria-hidden="true"
-        />
+        <ChevronDown class="pointer-events-none absolute right-2 size-3.5 text-muted-foreground" aria-hidden="true" />
     </label>
 </template>

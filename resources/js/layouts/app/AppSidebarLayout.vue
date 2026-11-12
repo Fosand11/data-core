@@ -3,6 +3,8 @@ import AppContent from '@/components/AppContent.vue';
 import AppHeader from '@/components/AppHeader.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
+import CommandPalette from '@/components/CommandPalette.vue';
+import FlashToast from '@/components/FlashToast.vue';
 import type { BreadcrumbItemType, CurrentTenant, TenantOption } from '@/types';
 
 interface Props {
@@ -25,5 +27,7 @@ withDefaults(defineProps<Props>(), {
             <AppHeader :breadcrumbs="breadcrumbs" :current-tenant="currentTenant" :tenants="tenants" />
             <slot />
         </AppContent>
+        <CommandPalette />
+        <FlashToast />
     </AppShell>
 </template>

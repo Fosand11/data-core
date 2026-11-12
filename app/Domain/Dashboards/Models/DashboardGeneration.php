@@ -2,6 +2,7 @@
 
 namespace App\Domain\Dashboards\Models;
 
+use App\Domain\Dashboards\Enums\DashboardGenerationKind;
 use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -23,7 +24,10 @@ class DashboardGeneration extends Model
         'dashboard_id',
         'requested_by',
         'provider',
+        'model',
         'status',
+        'kind',
+        'base_version',
         'prompt',
         'spec_version',
         'validated_spec',
@@ -31,6 +35,8 @@ class DashboardGeneration extends Model
         'error_message',
         'started_at',
         'completed_at',
+        'applied_at',
+        'discarded_at',
     ];
 
     /**
@@ -71,13 +77,36 @@ class DashboardGeneration extends Model
         return DashboardGenerationFactory::new();
     }
 
+    public function isRefinement(): bool
+    {
+        return $this->kind === DashboardGenerationKind::Refine;
+    }
+
+    /**
+     * Refinements the user has not resolved yet: still running, waiting for a
+     * decision, or failed and not dismissed.
+     *
+     * @param  Builder<DashboardGeneration>  $query
+     * @return Builder<DashboardGeneration>
+     */
+    public function scopeUnresolvedRefinements(Builder $query): Builder
+    {
+        return $query->where('kind', DashboardGenerationKind::Refine->value)
+            ->whereNull('applied_at')
+            ->whereNull('discarded_at');
+    }
+
     protected function casts(): array
     {
         return [
             'status' => DashboardGenerationStatus::class,
+            'kind' => DashboardGenerationKind::class,
+            'base_version' => 'integer',
             'validated_spec' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'applied_at' => 'datetime',
+            'discarded_at' => 'datetime',
         ];
     }
 }

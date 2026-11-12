@@ -1,0 +1,233 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://insightflow.local/schemas/dashboard-spec-v1.json",
+    "title": "InsightFlow DashboardSpec",
+    "description": "Contrato neutral y estructurado. No admite SQL ni consultas arbitrarias.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["version", "title", "description", "dataset", "global_filters", "visualizations", "layout"],
+    "properties": {
+        "version": { "enum": ["1.0", "1.1"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "dataset": { "$ref": "#/$defs/simpleIdentifier" },
+        "global_filters": {
+            "type": "array",
+            "maxItems": 10,
+            "items": { "$ref": "#/$defs/filter" }
+        },
+        "visualizations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 12,
+            "items": { "$ref": "#/$defs/visualization" }
+        },
+        "layout": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["columns"],
+            "properties": {
+                "columns": { "const": 12 }
+            }
+        }
+    },
+    "$defs": {
+        "simpleIdentifier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+        },
+        "fieldIdentifier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"
+        },
+        "filterValue": {
+            "oneOf": [
+                { "type": ["string", "number", "integer", "boolean", "null"], "maxLength": 200 },
+                {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": { "type": ["string", "number", "integer", "boolean", "null"] }
+                }
+            ]
+        },
+        "filter": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "operator", "value"],
+            "properties": {
+                "field": { "$ref": "#/$defs/fieldIdentifier" },
+                "operator": {
+                    "enum": [
+                        "equals",
+                        "not_equals",
+                        "in",
+                        "not_in",
+                        "greater_than",
+                        "greater_than_or_equal",
+                        "less_than",
+                        "less_than_or_equal",
+                        "between",
+                        "contains",
+                        "is_null",
+                        "is_not_null",
+                        "previous_quarter",
+                        "previous_period"
+                    ]
+                },
+                "value": { "$ref": "#/$defs/filterValue" }
+            }
+        },
+        "metric": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "aggregation", "alias"],
+            "properties": {
+                "field": { "$ref": "#/$defs/fieldIdentifier" },
+                "aggregation": { "enum": ["sum", "avg", "count", "min", "max"] },
+                "alias": { "$ref": "#/$defs/simpleIdentifier" },
+                "format": { "enum": ["currency", "number", "percent", "integer"] }
+            }
+        },
+        "dimension": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field"],
+            "properties": {
+                "field": { "$ref": "#/$defs/fieldIdentifier" }
+            }
+        },
+        "order": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "direction"],
+            "properties": {
+                "field": { "$ref": "#/$defs/fieldIdentifier" },
+                "direction": { "enum": ["asc", "desc"] }
+            }
+        },
+        "query": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["metrics", "dimensions", "filters", "order_by", "limit"],
+            "properties": {
+                "metrics": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": { "$ref": "#/$defs/metric" }
+                },
+                "dimensions": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": { "$ref": "#/$defs/dimension" }
+                },
+                "filters": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": { "$ref": "#/$defs/filter" }
+                },
+                "order_by": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": { "$ref": "#/$defs/order" }
+                },
+                "limit": { "type": "integer", "minimum": 1, "maximum": 500 }
+            }
+        },
+        "visualizationLayout": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+                "x": { "type": "integer", "minimum": 0, "maximum": 11 },
+                "y": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "width": { "type": "integer", "minimum": 1, "maximum": 12 },
+                "height": { "type": "integer", "minimum": 1, "maximum": 12 }
+            }
+        },
+        "visualization": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "title", "type", "query", "display", "layout"],
+            "properties": {
+                "key": { "$ref": "#/$defs/simpleIdentifier" },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "type": { "enum": ["kpi", "bar", "line", "area", "pie", "table"] },
+                "query": { "$ref": "#/$defs/query" },
+                "display": { "type": "object" },
+                "layout": { "$ref": "#/$defs/visualizationLayout" }
+            },
+            "allOf": [
+                {
+                    "if": { "properties": { "type": { "const": "kpi" } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["show_comparison"],
+                                "properties": { "show_comparison": { "type": "boolean" } }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": { "properties": { "type": { "enum": ["bar", "line", "area"] } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["x_axis", "y_axis"],
+                                "properties": {
+                                    "x_axis": { "$ref": "#/$defs/fieldIdentifier" },
+                                    "y_axis": { "$ref": "#/$defs/fieldIdentifier" }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": { "properties": { "type": { "const": "pie" } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["category", "value"],
+                                "properties": {
+                                    "category": { "$ref": "#/$defs/fieldIdentifier" },
+                                    "value": { "$ref": "#/$defs/fieldIdentifier" }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": { "properties": { "type": { "const": "table" } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["columns"],
+                                "properties": {
+                                    "columns": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 12,
+                                        "items": { "$ref": "#/$defs/fieldIdentifier" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

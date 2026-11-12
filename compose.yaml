@@ -44,7 +44,7 @@ services:
 
   worker:
     image: ${COMPOSE_PROJECT_NAME}-app:${APP_IMAGE_TAG}
-    command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=90
+    command: php artisan queue:work redis --sleep=1 --tries=1 --timeout=210
     env_file: .env
     volumes:
       - .:/var/www/html

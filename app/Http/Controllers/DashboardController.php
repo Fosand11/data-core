@@ -6,6 +6,7 @@ use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Enums\TenantStatus;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Http\Resources\DashboardSummaryResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
@@ -16,23 +17,13 @@ class DashboardController extends Controller
     public function index(Request $request, CurrentTenant $currentTenant): Response
     {
         $tenant = $currentTenant->get();
-        $dashboards = collect();
+        $dashboards = [];
 
         if ($tenant !== null) {
             Gate::authorize('viewAny', Dashboard::class);
-            $dashboards = $tenant->dashboards()
-                ->with('creator:id,name')
-                ->latest()
-                ->get()
-                ->map(fn (Dashboard $dashboard): array => [
-                    'id' => $dashboard->getKey(),
-                    'title' => $dashboard->title,
-                    'status' => $dashboard->status->value,
-                    'created_at' => $dashboard->created_at->toIso8601String(),
-                    'author' => $dashboard->creator === null ? null : [
-                        'name' => $dashboard->creator->name,
-                    ],
-                ]);
+            $dashboards = DashboardSummaryResource::collection(
+                $tenant->dashboards()->withPinnedState($request->user())->with('creator:id,name')->latest()->limit(12)->get(),
+            )->resolve();
         }
 
         $tenants = $request->user()

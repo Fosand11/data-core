@@ -1,9 +1,63 @@
 # Data Core
 
-Fundación de un SaaS multi-tenant para crear dashboards mediante lenguaje
-natural. La Fase 1 incluye autenticación, organizaciones, aislamiento explícito
-por tenant, una interfaz inicial y el entorno Docker; todavía no llama a OpenAI
-ni a la API de Metabase.
+SaaS multi-tenant para crear dashboards mediante lenguaje natural. Un usuario
+describe lo que quiere analizar; un generador de IA produce un `DashboardSpec`
+(JSON estructurado, nunca SQL) que se valida contra un catálogo de datos
+aprobado antes de persistirse.
+
+## Estado
+
+- Autenticación, organizaciones y aislamiento explícito por tenant.
+- Generación asíncrona de dashboards (cola + Job idempotente).
+- Proveedores de IA intercambiables detrás de una interfaz: `fake`
+  (determinista, para desarrollo y pruebas) y `openai`.
+- Validación estricta del `DashboardSpec`: allowlist de campos, sin SQL, sin
+  HTML, referencias cruzadas coherentes.
+- Dataset demo `demo_sales` por organización (se siembra al registrarse, ver
+  `TENANCY_SEED_DEMO_DATA`) y un ejecutor que traduce el spec validado a
+  consultas estructuradas, sin SQL generado por la IA y siempre acotado al
+  tenant actual.
+- Gráficas reales (KPI, barras, línea, área, circular y tabla) con ECharts, en
+  claro y oscuro, con vista de tabla accesible para cada gráfica.
+- Proveedor Gemini (plan gratuito de Google AI Studio) además de `fake`/`openai`.
+- Buscador `⌘K` / `Ctrl+K`: busca dashboards de tu organización, ejecuta acciones
+  y convierte una frase en un dashboard nuevo.
+- Acciones sobre dashboards: editar título y descripción, duplicar, eliminar,
+  fijar como favorito (personal) y reintentar una generación fallida o atascada.
+  Editar, duplicar y eliminar requieren rol de propietario o administrador.
+- Filtro de periodo (últimos 30 días, este/anterior mes o trimestre, este año,
+  últimos 12 meses, todo) que recalcula todas las visualizaciones en el servidor
+  y viaja en la URL (`?period=`). Un periodo elegido reemplaza los filtros de
+  fecha del dashboard; los filtros propios de cada visualización se conservan.
+  El mes en curso se marca como incompleto en las tendencias.
+- Refinar con IA: pide un cambio en lenguaje natural («cambia las barras por un
+  gráfico circular»). La IA propone un dashboard completo que pasa por el mismo
+  validador; se muestra como vista previa (propuesta o actual) y no se aplica
+  hasta que lo aceptas. Cada cambio crea una versión: historial append-only con
+  «deshacer», «volver al original» y restaurar cualquier versión.
+- Exportar, todo en el navegador y siempre en tema claro: imagen PNG y datos CSV
+  de cada gráfica; PDF del dashboard (impresión del navegador, A4 apaisado) y
+  presentación PowerPoint (.pptx) con portada, indicadores, una diapositiva por
+  gráfica (con texto alternativo) y tablas nativas editables. Los CSV protegen
+  contra la inyección de fórmulas y se abren en Excel (UTF-8 con BOM).
+
+## Arquitectura en breve
+
+```text
+Controller/Form Request -> StartDashboardGeneration -> Queue
+GenerateDashboardJob -> DashboardGenerator -> DashboardSpecValidator
+```
+
+- Monolito modular bajo `app/Domain` (`Tenancy`, `Dashboards`, `Ai`, `Metabase`).
+- El tenant se obtiene únicamente de `CurrentTenant`; nunca del request.
+- El proveedor de IA se elige con `DASHBOARD_AI_DRIVER`. Un valor ausente o
+  desconocido falla de forma explícita, sin fallback silencioso.
+- El schema canónico del contrato está en
+  [resources/schemas/dashboard-spec-v1.json](resources/schemas/dashboard-spec-v1.json).
+
+## Requisitos
+
+PHP 8.4, Composer 2, Node 22 (ver `.nvmrc`) y pnpm 10 (vía `corepack`).
 
 ## Inicio rápido con Docker
 
@@ -18,6 +72,10 @@ docker compose exec app php artisan migrate --seed
 ```
 
 Aplicación: <http://localhost:8080>. Metabase: <http://localhost:3000>.
+Las migraciones nunca se ejecutan al arrancar los contenedores.
+
+Usuarios de demostración (sólo desarrollo local): `owner@example.test` y
+`member@example.test`, ambos con la contraseña `password`.
 
 ## Comandos principales
 
@@ -26,23 +84,24 @@ Aplicación: <http://localhost:8080>. Metabase: <http://localhost:3000>.
 composer install
 corepack pnpm install --frozen-lockfile
 
-# Migraciones y datos demo dentro de Docker
-docker compose exec app php artisan migrate --seed
-
-# Pruebas
+# Pruebas (PHPUnit, SQLite en memoria)
 composer test
 
-# Formatters y análisis frontend
+# Formato y análisis
 composer format
 corepack pnpm format
 corepack pnpm lint
 corepack pnpm types
 
-# Comprobaciones sin modificar archivos
+# Pruebas del frontend (Vitest: lógica pura de formato, gráficas y exportación)
+corepack pnpm test:js
+
+# Comprobaciones sin modificar archivos (las mismas que ejecuta el CI)
 composer format:check
 corepack pnpm format:check
 corepack pnpm lint:check
 corepack pnpm types
+corepack pnpm build
 
 # Servicios
 docker compose up -d
@@ -51,6 +110,49 @@ docker compose logs -f app worker web
 docker compose down
 ```
 
-Consulta [desarrollo local](docs/local-development.md),
-[arquitectura](docs/architecture.md), [tenancy](docs/tenancy.md) y el
-[plan de implementación](docs/implementation-plan.md) para más detalle.
+## Configuración de IA
+
+```dotenv
+DASHBOARD_AI_DRIVER=fake   # fake | gemini | openai
+
+# Gemini (clave de Google AI Studio, sólo en .env local; nunca se versiona)
+GEMINI_API_KEY=
+GEMINI_MODEL=
+GEMINI_TIMEOUT=60
+GEMINI_MAX_RETRIES=2
+GEMINI_MAX_OUTPUT_TOKENS=16384
+
+OPENAI_API_KEY=
+OPENAI_MODEL=
+OPENAI_TIMEOUT=60
+OPENAI_MAX_RETRIES=2
+```
+
+Tras cambiar el driver, la key o el modelo, reinicia el worker de la cola.
+
+### Probar con Gemini (plan gratuito)
+
+1. Crea una clave en [Google AI Studio](https://aistudio.google.com/).
+2. En tu `.env` local: `DASHBOARD_AI_DRIVER=gemini` y `GEMINI_API_KEY=...`.
+3. Reinicia el worker y crea un dashboard desde la app.
+
+Notas: los límites del plan gratuito (peticiones por minuto y por día) cambian y
+sólo se ven en el panel de AI Studio; al alcanzarlos la generación falla con un
+mensaje claro y no se reintenta. Con el plan gratuito Google puede usar el
+contenido enviado para mejorar sus productos, por eso la app sólo envía tu
+solicitud y el catálogo estático (nunca filas, ids internos ni secretos) y avisa
+en la pantalla de creación. Los nombres de modelo cambian con frecuencia:
+comprueba el vigente en la documentación de Gemini antes de fijarlo.
+
+## Dependencias del frontend añadidas con justificación
+
+- `echarts` y `vue-echarts`: el framework no incluye gráficas. ECharts cubre los
+  tipos del contrato (barras, línea, área, circular) con accesibilidad y
+  tooltips; se importa por módulos y se carga de forma diferida.
+- `pptxgenjs`: generar un `.pptx` real en el navegador no tiene equivalente en el
+  framework. Solo depende de `jszip`, no tiene scripts de instalación y se carga
+  de forma diferida únicamente al exportar a PowerPoint.
+- `vitest` (desarrollo): no había runner para el frontend y la lógica de
+  exportación (p. ej. el escapado de CSV contra inyección de fórmulas) es
+  sensible y pura, ideal para pruebas unitarias.
+

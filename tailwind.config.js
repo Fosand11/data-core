@@ -12,7 +12,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Inter', ...defaultTheme.fontFamily.sans],
             },
             fontSize: {
                 display: ['3rem', { lineHeight: '1.08', fontWeight: '700' }],
@@ -84,8 +84,8 @@ export default {
                 },
             },
             boxShadow: {
-                soft: '0 10px 30px -16px rgb(17 24 39 / 0.24)',
-                card: '0 1px 2px rgb(17 24 39 / 0.04), 0 8px 24px -18px rgb(17 24 39 / 0.18)',
+                soft: '0 12px 32px -18px rgb(20 33 28 / 0.28)',
+                card: '0 1px 2px rgb(20 33 28 / 0.04), 0 10px 28px -20px rgb(20 33 28 / 0.2)',
             },
         },
     },

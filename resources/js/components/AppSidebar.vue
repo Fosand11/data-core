@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
+import NavDashboardList from '@/components/NavDashboardList.vue';
 import NavMain from '@/components/NavMain.vue';
 import UserMenu from '@/components/UserMenu.vue';
 import {
@@ -15,53 +15,52 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavItem, SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BarChart3, CircleHelp, Database, History, Home, Settings, Sparkles, Users } from 'lucide-vue-next';
+import { LayoutGrid, Plus, Settings, Sparkles } from 'lucide-vue-next';
 
 const page = usePage<SharedData>();
 const { state } = useSidebar();
 
 const mainNavItems: NavItem[] = [
-    { title: 'Inicio', href: '/dashboard', icon: Home },
-    { title: 'Dashboards', href: '/dashboards', icon: BarChart3 },
-    { title: 'Crear con IA', href: '/dashboards/create', icon: Sparkles },
-    { title: 'Fuentes de datos', href: '#sources', icon: Database, disabled: true },
-    { title: 'Historial', href: '#history', icon: History, disabled: true },
-    { title: 'Organización', href: '#organization', icon: Users, disabled: true },
+    { title: 'Inicio', href: '/dashboard', icon: Sparkles },
+    { title: 'Dashboards', href: '/dashboards', icon: LayoutGrid },
     { title: 'Configuración', href: '/settings/profile', icon: Settings },
 ];
-
-const footerNavItems: NavItem[] = [{ title: 'Centro de ayuda', href: '#help', icon: CircleHelp, disabled: true }];
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="floating" class="insight-sidebar">
-        <SidebarHeader class="h-[5.25rem] justify-center px-3 pt-3">
+    <Sidebar collapsible="icon" variant="sidebar" class="insight-sidebar">
+        <SidebarHeader class="gap-4 p-3 pt-4">
+            <Link
+                :href="route('dashboard')"
+                class="flex items-center rounded-lg px-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="InsightFlow, ir al inicio"
+            >
+                <AppLogo :compact="state === 'collapsed'" />
+            </Link>
+
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton
-                        size="lg"
                         as-child
-                        class="min-h-14 rounded-2xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] data-[state=open]:bg-transparent"
+                        tooltip="Nueva pregunta"
+                        class="h-10 justify-center rounded-xl bg-primary font-medium text-primary-foreground shadow-sm hover:bg-primary-hover hover:text-primary-foreground"
                     >
-                        <Link :href="route('dashboard')" aria-label="InsightFlow, ir al inicio">
-                            <AppLogo :compact="state === 'collapsed'" inverse />
-                            <span
-                                v-if="state !== 'collapsed'"
-                                class="motion-soft-pulse ml-auto size-1.5 rounded-full bg-indigo-300"
-                                aria-hidden="true"
-                            />
+                        <Link :href="route('dashboards.create')">
+                            <Plus class="size-4" aria-hidden="true" />
+                            <span>Nueva pregunta</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent class="px-2 py-5">
+        <SidebarContent class="gap-5 px-3 py-2">
             <NavMain :items="mainNavItems" />
+            <NavDashboardList title="Fijados" :dashboards="page.props.pinnedDashboards ?? []" />
+            <NavDashboardList title="Recientes" :dashboards="page.props.recentDashboards ?? []" />
         </SidebarContent>
 
-        <SidebarFooter class="border-t border-white/10 p-3">
-            <NavFooter :items="footerNavItems" />
+        <SidebarFooter class="p-3">
             <UserMenu :user="page.props.auth.user" :compact="state === 'collapsed'" />
         </SidebarFooter>
     </Sidebar>

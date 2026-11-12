@@ -4,91 +4,101 @@
 
 body,
 html {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-sans:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', ui-sans-serif, system-ui, 'Segoe UI', sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji';
 }
 
 @layer base {
     :root {
-        --background: 0 0% 98%;
-        --foreground: 221 39% 11%;
+        --background: 100 13% 95%;
+        --foreground: 157 25% 10%;
         --card: 0 0% 100%;
-        --card-foreground: 221 39% 11%;
+        --card-foreground: 157 25% 10%;
         --popover: 0 0% 100%;
-        --popover-foreground: 221 39% 11%;
-        --primary: 243 75% 59%;
-        --primary-hover: 244 57% 51%;
-        --primary-subtle: 226 100% 97%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 220 14% 96%;
-        --secondary-foreground: 221 39% 11%;
-        --muted: 220 14% 96%;
-        --muted-foreground: 220 9% 46%;
-        --accent: 226 100% 97%;
-        --accent-foreground: 243 75% 59%;
-        --destructive: 0 72% 51%;
-        --destructive-foreground: 0 0% 98%;
-        --success: 160 94% 30%;
-        --warning: 32 95% 44%;
-        --error: 0 72% 51%;
-        --info: 217 91% 60%;
-        --border: 220 13% 91%;
-        --input: 220 13% 91%;
-        --ring: 243 75% 59%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.625rem;
-        --sidebar-background: 0 0% 100%;
-        --sidebar-foreground: 220 9% 38%;
-        --sidebar-primary: 243 75% 59%;
-        --sidebar-primary-foreground: 0 0% 98%;
-        --sidebar-accent: 226 100% 97%;
-        --sidebar-accent-foreground: 243 75% 59%;
-        --sidebar-border: 220 13% 91%;
-        --sidebar-ring: 243 75% 59%;
+        --popover-foreground: 157 25% 10%;
+        --primary: 160 55% 27%;
+        --primary-hover: 161 57% 22%;
+        --primary-subtle: 150 27% 91%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 135 11% 93%;
+        --secondary-foreground: 157 25% 10%;
+        --muted: 135 11% 93%;
+        --muted-foreground: 152 8% 38%;
+        --accent: 142 17% 91%;
+        --accent-foreground: 160 55% 27%;
+        --destructive: 0 65% 54%;
+        --destructive-foreground: 0 0% 100%;
+        --success: 156 83% 26%;
+        --warning: 36 100% 36%;
+        --error: 0 65% 54%;
+        --info: 216 63% 50%;
+        --border: 130 10% 88%;
+        --input: 130 10% 88%;
+        --ring: 160 55% 27%;
+        --sidebar-background: 100 23% 97%;
+        --sidebar-foreground: 152 9% 32%;
+        --sidebar-primary: 160 55% 27%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 143 17% 91%;
+        --sidebar-accent-foreground: 157 25% 10%;
+        --sidebar-border: 130 10% 88%;
+        --sidebar-ring: 160 55% 27%;
+        --radius: 0.875rem;
+        /* Data-viz categorical slots (validated: adjacent CVD ΔE >= 8, normal-vision ΔE >= 15). */
+        --viz-1: #0e8f63;
+        --viz-2: #e0a31b;
+        --viz-3: #3b7dd8;
+        --viz-4: #e5634b;
+        --viz-5: #8a6fd6;
+        --viz-6: #14a3b8;
     }
 
-    .dark {
-        --background: 240 24% 7%;
-        --foreground: 226 31% 92%;
-        --card: 240 20% 10%;
-        --card-foreground: 226 31% 92%;
-        --popover: 240 20% 11%;
-        --popover-foreground: 226 31% 92%;
-        --primary: 243 75% 66%;
-        --primary-hover: 243 79% 72%;
-        --primary-subtle: 243 35% 18%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 240 16% 16%;
-        --secondary-foreground: 226 31% 92%;
-        --muted: 240 14% 15%;
-        --muted-foreground: 223 13% 65%;
-        --accent: 243 35% 18%;
-        --accent-foreground: 239 84% 80%;
-        --destructive: 0 84% 60%;
-        --destructive-foreground: 0 0% 98%;
-        --success: 160 84% 39%;
-        --warning: 38 92% 50%;
-        --error: 0 72% 51%;
-        --info: 217 91% 60%;
-        --border: 240 14% 20%;
-        --input: 240 14% 23%;
-        --ring: 243 75% 70%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-        --sidebar-background: 241 39% 10%;
-        --sidebar-foreground: 226 27% 82%;
-        --sidebar-primary: 243 75% 66%;
-        --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 243 42% 20%;
-        --sidebar-accent-foreground: 226 100% 97%;
-        --sidebar-border: 243 26% 22%;
-        --sidebar-ring: 244 100% 76%;
+    /* The dark tokens never apply on paper: a printed dashboard is always light, whatever the screen theme. */
+    @media not print {
+        .dark {
+            --background: 154 20% 7%;
+            --foreground: 140 22% 92%;
+            --card: 147 18% 10%;
+            --card-foreground: 140 22% 92%;
+            --popover: 150 17% 11%;
+            --popover-foreground: 140 22% 92%;
+            --primary: 157 54% 55%;
+            --primary-hover: 157 59% 64%;
+            --primary-subtle: 166 35% 14%;
+            --primary-foreground: 153 41% 5%;
+            --secondary: 153 16% 13%;
+            --secondary-foreground: 140 22% 92%;
+            --muted: 153 16% 13%;
+            --muted-foreground: 148 9% 62%;
+            --accent: 155 26% 14%;
+            --accent-foreground: 155 58% 68%;
+            --destructive: 0 82% 65%;
+            --destructive-foreground: 154 20% 7%;
+            --success: 155 56% 52%;
+            --warning: 36 77% 57%;
+            --error: 0 82% 65%;
+            --info: 215 84% 68%;
+            --border: 145 14% 16%;
+            --input: 150 14% 19%;
+            --ring: 157 54% 55%;
+            --sidebar-background: 153 21% 8%;
+            --sidebar-foreground: 148 11% 69%;
+            --sidebar-primary: 157 54% 55%;
+            --sidebar-primary-foreground: 153 41% 5%;
+            --sidebar-accent: 154 21% 13%;
+            --sidebar-accent-foreground: 140 22% 92%;
+            --sidebar-border: 145 14% 16%;
+            --sidebar-ring: 157 54% 55%;
+            --radius: 0.875rem;
+            /* Data-viz categorical slots (validated: adjacent CVD ΔE >= 8, normal-vision ΔE >= 15). */
+            --viz-1: #22a877;
+            --viz-2: #c98500;
+            --viz-3: #4a8ee8;
+            --viz-4: #d9694f;
+            --viz-5: #9480e0;
+            --viz-6: #12a0a8;
+        }
     }
 }
 
@@ -97,77 +107,48 @@ html {
         @apply border-border;
     }
 
+    html {
+        font-feature-settings: 'cv11', 'ss01';
+        -webkit-text-size-adjust: 100%;
+    }
+
     body {
         @apply bg-background text-foreground antialiased;
-        background-image:
-            radial-gradient(circle at 78% -10%, hsl(var(--primary) / 0.07), transparent 32rem),
-            linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
-            linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
-        background-size:
-            auto,
-            32px 32px,
-            32px 32px;
+    }
+
+    h1,
+    h2,
+    h3 {
+        text-wrap: balance;
     }
 
     :focus-visible {
         outline: 2px solid hsl(var(--ring));
         outline-offset: 2px;
     }
+
+    ::selection {
+        background: hsl(var(--primary) / 0.22);
+    }
 }
 
 @layer components {
-    .insight-sidebar {
-        --sidebar-background: 241 39% 12%;
-        --sidebar-foreground: 226 27% 82%;
-        --sidebar-accent: 243 42% 20%;
-        --sidebar-accent-foreground: 226 100% 97%;
-        --sidebar-border: 243 26% 22%;
-        --sidebar-ring: 244 100% 76%;
+    /* Translucent sidebar material (vibrancy). */
+    .insight-sidebar [data-sidebar='sidebar'] {
+        background-color: hsl(var(--sidebar-background) / 0.78);
+        -webkit-backdrop-filter: blur(28px) saturate(1.6);
+        backdrop-filter: blur(28px) saturate(1.6);
+        border-color: hsl(var(--sidebar-border) / 0.8);
     }
 
     .app-canvas {
         position: relative;
-        isolation: isolate;
     }
 
-    .app-canvas::before {
-        position: fixed;
-        inset: 4.5rem 0 auto auto;
-        z-index: -1;
-        width: min(42vw, 38rem);
-        height: 24rem;
-        content: '';
-        pointer-events: none;
-        background: radial-gradient(ellipse at top right, hsl(var(--primary) / 0.085), transparent 70%);
-    }
-
-    .editorial-kicker {
-        @apply inline-flex items-center gap-2 text-[0.6875rem] font-bold uppercase tracking-[0.2em] text-primary;
-    }
-
-    .editorial-kicker::before {
-        width: 1.75rem;
-        height: 1px;
-        content: '';
-        background: currentColor;
-    }
-
+    /* Hairline surface used for cards and panels. */
     .insight-panel {
-        @apply relative overflow-hidden border border-border/80 bg-card/90 shadow-card backdrop-blur-sm;
-        border-radius: 1.25rem;
-    }
-
-    .insight-panel::after {
-        position: absolute;
-        inset: 0;
-        content: '';
-        pointer-events: none;
-        border-radius: inherit;
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
-    }
-
-    .dark .insight-panel::after {
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+        @apply relative overflow-hidden border border-border/80 bg-card shadow-card;
+        border-radius: 1.5rem;
     }
 
     .motion-reveal {
@@ -180,10 +161,6 @@ html {
 
     .motion-reveal-late {
         animation: insight-reveal 520ms 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-
-    .motion-soft-pulse {
-        animation: insight-soft-pulse 3.6s ease-in-out infinite;
     }
 
     .dashboard-grid > * {
@@ -223,19 +200,6 @@ html {
     }
 }
 
-@keyframes insight-soft-pulse {
-    0%,
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96);
-    }
-
-    50% {
-        opacity: 1;
-        transform: scale(1.04);
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -244,5 +208,39 @@ html {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* Printing / "save as PDF": the dashboard on paper, without the application chrome. */
+@page {
+    size: A4 landscape;
+    margin: 10mm;
+}
+
+@media print {
+    :root {
+        --background: 0 0% 100%;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* The sidebar (and the gap it reserves) is the element that carries data-variant. */
+    [data-variant] {
+        display: none !important;
+    }
+
+    .motion-reveal,
+    .motion-reveal-delayed,
+    .motion-reveal-late,
+    .dashboard-grid > * {
+        animation: none !important;
     }
 }
