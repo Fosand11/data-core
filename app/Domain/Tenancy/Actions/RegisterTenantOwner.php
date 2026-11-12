@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tenancy\Actions;
 
+use App\Domain\Dashboards\Actions\SeedDemoSales;
 use App\Domain\Tenancy\Enums\TenantRole;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
 
 class RegisterTenantOwner
 {
+    public function __construct(private readonly SeedDemoSales $seedDemoSales) {}
+
     /**
      * @param  array{name: string, email: string, password: string}  $attributes
      */
@@ -32,6 +35,10 @@ class RegisterTenantOwner
             ]);
 
             $tenant->attachUser($user, TenantRole::Owner);
+
+            if (config('tenancy.seed_demo_data')) {
+                $this->seedDemoSales->execute($tenant);
+            }
 
             return $user;
         });

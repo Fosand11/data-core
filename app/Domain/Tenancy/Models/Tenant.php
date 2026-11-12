@@ -4,6 +4,7 @@ namespace App\Domain\Tenancy\Models;
 
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
+use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Tenancy\Enums\TenantRole;
 use App\Domain\Tenancy\Enums\TenantStatus;
 use App\Models\User;
@@ -50,6 +51,14 @@ class Tenant extends Model
     public function dashboardGenerations(): HasMany
     {
         return $this->hasMany(DashboardGeneration::class);
+    }
+
+    /**
+     * @return HasMany<DemoSale, $this>
+     */
+    public function demoSales(): HasMany
+    {
+        return $this->hasMany(DemoSale::class);
     }
 
     protected static function newFactory(): Factory
