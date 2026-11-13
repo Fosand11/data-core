@@ -2,14 +2,19 @@
 # the host), this one bakes the application and its compiled assets in.
 #
 # Targets:
-#   app  php-fpm with the application (also runs the queue worker)
-#   web  Caddy: automatic HTTPS, serves public/ and forwards PHP to app
+#   app     php-fpm with the application (also runs the queue worker)
+#   web     Caddy: automatic HTTPS, serves public/ and forwards PHP to app
+#   render  everything in ONE container, for single-container hosts (see the last stage)
 #
-# Every base image comes from build args (see .env.example); none uses `latest`.
-ARG PHP_IMAGE
-ARG COMPOSER_IMAGE
-ARG NODE_IMAGE
-ARG CADDY_IMAGE
+# compose.prod.yaml always names its targets. A build without --target (what a PaaS
+# does) ends at the last stage, `render`.
+#
+# Every base image comes from build args (see .env.example); the defaults below are
+# the same pinned versions, and none uses `latest`.
+ARG PHP_IMAGE=php:8.4.11-fpm-bookworm
+ARG COMPOSER_IMAGE=composer:2.8.12
+ARG NODE_IMAGE=node:22.12.0-bookworm-slim
+ARG CADDY_IMAGE=caddy:2.10.2-alpine
 
 FROM ${COMPOSER_IMAGE} AS composer
 
@@ -86,3 +91,25 @@ FROM ${CADDY_IMAGE} AS web
 
 COPY docker/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=app /var/www/html/public /var/www/html/public
+
+# --- All-in-one (Render and similar single-container hosts) ---------------------------
+# php-fpm, Caddy (plain HTTP on $PORT: the platform terminates TLS) and the queue
+# worker run together under supervisord. The database holds the queue, cache and
+# sessions, so there is no Redis. Keep this the LAST stage.
+FROM app AS render
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends supervisor \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=web /usr/bin/caddy /usr/bin/caddy
+COPY docker/render/Caddyfile /etc/caddy/Caddyfile
+COPY docker/render/supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/render/php-fpm.conf /usr/local/etc/php-fpm.d/zz-render.conf
+
+ENV PORT=10000
+EXPOSE 10000
+
+# The inherited entrypoint builds the config/view caches, then runs this.
+CMD ["supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]

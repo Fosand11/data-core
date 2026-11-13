@@ -15,6 +15,7 @@ use App\Domain\Dashboards\Policies\DashboardPolicy;
 use App\Domain\Dashboards\Policies\DemoSalePolicy;
 use App\Domain\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,6 +62,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.trust_proxies')) {
+            TrustProxies::at('*');
+        }
+
         Gate::policy(Dashboard::class, DashboardPolicy::class);
         Gate::policy(DemoSale::class, DemoSalePolicy::class);
 

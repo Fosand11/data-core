@@ -207,9 +207,6 @@ crea una cuenta de demostración con dashboards de ejemplo, con las credenciales
 contraseñas por defecto). Para limitar el gasto de una cuota gratuita de IA,
 `DASHBOARD_AI_GLOBAL_PER_DAY` fija un tope diario compartido por todos los usuarios.
 
-Guía completa, gratuita, sobre una VM de Oracle Cloud Always Free:
-[deploy/oracle-free.md](deploy/oracle-free.md).
-
 ## Configuración de IA
 
 ```dotenv

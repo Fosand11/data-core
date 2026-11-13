@@ -56,6 +56,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Trust the reverse proxy in front of the application
+    |--------------------------------------------------------------------------
+    |
+    | Only enable this when the app is reachable exclusively through a proxy that
+    | sets the X-Forwarded-* headers itself (a PaaS edge such as Render's). With
+    | it on, those headers are believed, so the app knows the request came over
+    | HTTPS. Never enable it for an app that clients can reach directly: they could
+    | forge the headers.
+    |
+    */
+
+    'trust_proxies' => (bool) env('APP_TRUST_PROXIES', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |
