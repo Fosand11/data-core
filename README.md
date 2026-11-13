@@ -187,6 +187,26 @@ docker compose logs -f app worker web
 docker compose down
 ```
 
+## Despliegue en producción
+
+`compose.prod.yaml` define el stack de producción en una sola máquina: Caddy con
+HTTPS automático, PHP-FPM con el código y los assets ya incluidos en la imagen, el
+worker de la cola, PostgreSQL y Redis (con contraseña, sin puertos publicados).
+
+```bash
+cp .env.production.example .env.production   # rellena los valores en el servidor
+docker compose --env-file .env.production -f compose.prod.yaml build
+docker compose --env-file .env.production -f compose.prod.yaml up -d
+docker compose --env-file .env.production -f compose.prod.yaml run --rm app php artisan migrate --force
+docker compose --env-file .env.production -f compose.prod.yaml run --rm app php artisan demo:install
+```
+
+Las migraciones nunca se ejecutan al arrancar los contenedores. `demo:install`
+crea una cuenta de demostración con dashboards de ejemplo, con las credenciales
+`DEMO_USER_EMAIL` y `DEMO_USER_PASSWORD` del entorno del servidor (no hay
+contraseñas por defecto). Para limitar el gasto de una cuota gratuita de IA,
+`DASHBOARD_AI_GLOBAL_PER_DAY` fija un tope diario compartido por todos los usuarios.
+
 ## Configuración de IA
 
 ```dotenv
@@ -194,13 +214,13 @@ DASHBOARD_AI_DRIVER=fake   # fake | gemini | openai
 
 # Gemini (clave de Google AI Studio, sólo en .env local; nunca se versiona)
 GEMINI_API_KEY=
-GEMINI_MODEL=
+GEMINI_MODEL=gemini-3.6-flash
 GEMINI_TIMEOUT=60
 GEMINI_MAX_RETRIES=2
 GEMINI_MAX_OUTPUT_TOKENS=16384
 
 OPENAI_API_KEY=
-OPENAI_MODEL=
+OPENAI_MODEL=gpt-5.6-terra
 OPENAI_TIMEOUT=60
 OPENAI_MAX_RETRIES=2
 ```

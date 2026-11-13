@@ -1,0 +1,38 @@
+# APP_DOMAIN is the public host name (Caddy gets and renews its certificate
+# automatically). For a local test over plain HTTP use APP_DOMAIN=http://localhost.
+{$APP_DOMAIN} {
+	root * /var/www/html/public
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Dotfiles are never served (except /.well-known).
+	@dotfiles {
+		path_regexp ^/\.
+		not path /.well-known/*
+	}
+	respond @dotfiles 404
+
+	# Vite output is content-hashed, so it can be cached for good.
+	@assets path /build/assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	php_fastcgi app:9000 {
+		read_timeout 60s
+	}
+	file_server
+}
+
+# Internal health endpoint for the container healthcheck. This port is never
+# published; it goes through php-fpm, so it also proves the application answers.
+:8081 {
+	root * /var/www/html/public
+	php_fastcgi app:9000
+}

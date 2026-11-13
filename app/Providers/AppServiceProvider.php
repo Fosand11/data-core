@@ -15,6 +15,7 @@ use App\Domain\Dashboards\Policies\DashboardPolicy;
 use App\Domain\Dashboards\Policies\DemoSalePolicy;
 use App\Domain\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,16 +62,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.trust_proxies')) {
+            TrustProxies::at('*');
+        }
+
         Gate::policy(Dashboard::class, DashboardPolicy::class);
         Gate::policy(DemoSale::class, DemoSalePolicy::class);
 
         RateLimiter::for('dashboard-generation', function (Request $request): array {
             $key = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
 
-            return [
+            $limits = [
                 Limit::perMinute(max(1, (int) config('dashboard-ai.rate_limit.per_minute')))->by("minute:{$key}"),
                 Limit::perHour(max(1, (int) config('dashboard-ai.rate_limit.per_hour')))->by("hour:{$key}"),
             ];
+
+            $globalPerDay = (int) config('dashboard-ai.rate_limit.global_per_day');
+
+            if ($globalPerDay > 0) {
+                $limits[] = Limit::perDay($globalPerDay)->by('day:global');
+            }
+
+            return $limits;
         });
     }
 }

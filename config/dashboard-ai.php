@@ -14,15 +14,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Generation rate limits (per user)
+    | Generation rate limits
     |--------------------------------------------------------------------------
     |
-    | Protects the provider quota (and its cost) from a single account.
+    | Protect the provider quota (and its cost). per_minute and per_hour apply to
+    | each user. global_per_day is shared by everyone (a public demo on a free
+    | tier would otherwise be drained by many accounts); 0 disables it.
     |
     */
     'rate_limit' => [
         'per_minute' => (int) env('DASHBOARD_AI_RATE_LIMIT_PER_MINUTE', 3),
         'per_hour' => (int) env('DASHBOARD_AI_RATE_LIMIT_PER_HOUR', 20),
+        'global_per_day' => (int) env('DASHBOARD_AI_GLOBAL_PER_DAY', 0),
     ],
 
     /*
@@ -39,7 +42,7 @@ return [
 
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
         'timeout' => (int) env('GEMINI_TIMEOUT', 60),
         'max_retries' => (int) env('GEMINI_MAX_RETRIES', 2),
         'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 16384),
