@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
 import ProductPreview from '@/components/ProductPreview.vue';
+import StudioCredit from '@/components/StudioCredit.vue';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
@@ -86,7 +87,10 @@ const features = [
 
         <footer class="border-t">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-6 py-6 text-xs text-muted-foreground">
-                <span>© {{ new Date().getFullYear() }} InsightFlow</span>
+                <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>© {{ new Date().getFullYear() }} InsightFlow</span>
+                    <StudioCredit />
+                </span>
                 <span>Laravel · Vue · ECharts · Gemini</span>
             </div>
         </footer>
