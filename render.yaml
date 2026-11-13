@@ -14,7 +14,10 @@ services:
     region: ohio
     dockerfilePath: ./docker/php/Dockerfile.prod
     dockerContext: .
-    healthCheckPath: /health
+    # /up is Laravel's built-in check: it never touches the database. /health goes
+    # through the session middleware (database-backed here), so each check would wake
+    # Neon and burn its free compute hours.
+    healthCheckPath: /up
     envVars:
       - key: APP_NAME
         value: InsightFlow

@@ -98,12 +98,19 @@ COPY --from=app /var/www/html/public /var/www/html/public
 # sessions, so there is no Redis. Keep this the LAST stage.
 FROM app AS render
 
+COPY --from=web /usr/bin/caddy /usr/bin/caddy
+
+# The official Caddy binary carries a file capability (cap_net_bind_service, to bind
+# ports below 1024). Hosts that run containers without that capability refuse to
+# execute such a file ("EPERM"). Caddy listens on $PORT (above 1024), so drop it, and
+# fail the build if it is still there.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends supervisor \
+    && apt-get install -y --no-install-recommends supervisor libcap2-bin \
+    && (setcap -r /usr/bin/caddy || true) \
+    && test -z "$(getcap /usr/bin/caddy)" \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=web /usr/bin/caddy /usr/bin/caddy
 COPY docker/render/Caddyfile /etc/caddy/Caddyfile
 COPY docker/render/supervisord.conf /etc/supervisor/supervisord.conf
 COPY docker/render/php-fpm.conf /usr/local/etc/php-fpm.d/zz-render.conf
