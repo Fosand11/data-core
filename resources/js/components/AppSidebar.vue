@@ -2,6 +2,7 @@
 import AppLogo from '@/components/AppLogo.vue';
 import NavDashboardList from '@/components/NavDashboardList.vue';
 import NavMain from '@/components/NavMain.vue';
+import StudioCredit from '@/components/StudioCredit.vue';
 import UserMenu from '@/components/UserMenu.vue';
 import {
     Sidebar,
@@ -60,8 +61,9 @@ const mainNavItems: NavItem[] = [
             <NavDashboardList title="Recientes" :dashboards="page.props.recentDashboards ?? []" />
         </SidebarContent>
 
-        <SidebarFooter class="p-3">
+        <SidebarFooter class="gap-2 p-3">
             <UserMenu :user="page.props.auth.user" :compact="state === 'collapsed'" />
+            <StudioCredit v-if="state !== 'collapsed'" class="px-2" />
         </SidebarFooter>
     </Sidebar>
 </template>

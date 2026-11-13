@@ -4,7 +4,7 @@
 
 ![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
 
-> Proyecto de portfolio. Laravel 12 · PHP 8.4 · Vue 3 + TypeScript · Inertia · ECharts · Gemini / OpenAI.
+> Proyecto de portfolio de [Cifra Studios](https://cifra-studios-core.vercel.app/). Laravel 12 · PHP 8.4 · Vue 3 + TypeScript · Inertia · ECharts · Gemini / OpenAI.
 
 ## Qué puedes hacer
 
