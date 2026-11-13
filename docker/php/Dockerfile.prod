@@ -1,0 +1,88 @@
+# Production image. Unlike docker/php/Dockerfile (development, code mounted from
+# the host), this one bakes the application and its compiled assets in.
+#
+# Targets:
+#   app  php-fpm with the application (also runs the queue worker)
+#   web  Caddy: automatic HTTPS, serves public/ and forwards PHP to app
+#
+# Every base image comes from build args (see .env.example); none uses `latest`.
+ARG PHP_IMAGE
+ARG COMPOSER_IMAGE
+ARG NODE_IMAGE
+ARG CADDY_IMAGE
+
+FROM ${COMPOSER_IMAGE} AS composer
+
+# --- PHP base: extensions the application needs --------------------------------
+FROM ${PHP_IMAGE} AS base
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libicu-dev \
+        libpq-dev \
+        libzip-dev \
+        unzip \
+    && docker-php-ext-install -j"$(nproc)" bcmath intl opcache pcntl pdo_pgsql zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/pear
+
+COPY --from=composer /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+WORKDIR /var/www/html
+
+# --- Composer dependencies, without dev packages -----------------------------------
+FROM base AS vendor
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --no-autoloader
+
+# --- Frontend build ----------------------------------------------------------------
+# resources/js/app.ts imports Ziggy from vendor/, so the PHP dependencies come first.
+FROM ${NODE_IMAGE} AS assets
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+# pnpm at the exact version pinned in package.json ("packageManager"). Corepack is
+# avoided on purpose: the one bundled with this Node cannot verify npm's current
+# signing keys and fails to download pnpm.
+RUN npm install --global "pnpm@$(node -p "require('./package.json').packageManager.split('@')[1]")" \
+    && pnpm install --frozen-lockfile
+
+COPY --from=vendor /var/www/html/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
+COPY resources ./resources
+COPY public ./public
+COPY vite.config.ts tailwind.config.js tsconfig.json ./
+RUN pnpm build
+
+# --- Application (php-fpm) -----------------------------------------------------------
+FROM base AS app
+
+COPY docker/php/prod.ini /usr/local/etc/php/conf.d/zz-prod.ini
+COPY docker/php/entrypoint.prod.sh /usr/local/bin/entrypoint
+RUN chmod +x /usr/local/bin/entrypoint
+
+COPY --from=vendor /var/www/html/vendor ./vendor
+COPY . .
+COPY --from=assets /app/public/build ./public/build
+
+# Writable directories are recreated here: .dockerignore keeps the host's runtime files out.
+# Tests, local docs and CI files have no place in a production image.
+RUN rm -rf tests docs .github \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && composer dump-autoload --no-dev --optimize --classmap-authoritative --no-interaction \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 9000
+
+ENTRYPOINT ["entrypoint"]
+CMD ["php-fpm"]
+
+# --- Web (Caddy) -----------------------------------------------------------------------
+FROM ${CADDY_IMAGE} AS web
+
+COPY docker/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=app /var/www/html/public /var/www/html/public

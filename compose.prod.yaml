@@ -1,0 +1,119 @@
+# Production stack (single host). Always pass the production env file:
+#
+#   docker compose --env-file .env.production -f compose.prod.yaml <command>
+#
+# Differences from compose.yaml (development): the code is baked into the image
+# instead of mounted, PostgreSQL and Redis are NOT published to the host, Redis
+# requires a password, and Metabase is not included. Only the proxy listens on
+# the network (80/443).
+name: ${COMPOSE_PROJECT_NAME}-prod
+
+x-build: &build
+  context: .
+  dockerfile: docker/php/Dockerfile.prod
+  args:
+    PHP_IMAGE: ${PHP_IMAGE:?set PHP_IMAGE}
+    COMPOSER_IMAGE: ${COMPOSER_IMAGE:?set COMPOSER_IMAGE}
+    NODE_IMAGE: ${NODE_IMAGE:?set NODE_IMAGE}
+    CADDY_IMAGE: ${CADDY_IMAGE:?set CADDY_IMAGE}
+
+services:
+  web:
+    image: ${COMPOSE_PROJECT_NAME}-web:${APP_IMAGE_TAG}
+    build:
+      <<: *build
+      target: web
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?set APP_DOMAIN}
+    ports:
+      - "${WEB_HTTP_PORT:-80}:80"
+      - "${WEB_HTTPS_PORT:-443}:443"
+      - "${WEB_HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  app:
+    image: ${COMPOSE_PROJECT_NAME}-app:${APP_IMAGE_TAG}
+    build:
+      <<: *build
+      target: app
+    env_file: .env.production
+    volumes:
+      - app_storage:/var/www/html/storage
+    depends_on:
+      saas-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "artisan", "about", "--only=environment"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    image: ${COMPOSE_PROJECT_NAME}-app:${APP_IMAGE_TAG}
+    command: php artisan queue:work redis --sleep=1 --tries=1 --timeout=210
+    user: www-data
+    env_file: .env.production
+    volumes:
+      - app_storage:/var/www/html/storage
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      # The image has no pgrep. The pattern is written as queue[:]work so this very
+      # command line does not match itself.
+      test: ["CMD-SHELL", "grep -qa 'queue[:]work' /proc/[0-9]*/cmdline"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  saas-db:
+    image: ${POSTGRES_IMAGE:?set POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:?set DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME:?set DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    volumes:
+      - saas_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: ${REDIS_IMAGE:?set REDIS_IMAGE}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  app_storage:
+  caddy_config:
+  caddy_data:
+  redis_data:
+  saas_db_data:

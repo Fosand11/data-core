@@ -1,0 +1,503 @@
+[
+    {
+        "title": "Resumen del Último Trimestre",
+        "description": "Resumen ejecutivo de ventas totales, unidades vendidas y distribución por región durante el último trimestre.",
+        "original_prompt": "Resumen del último trimestre: ventas totales, unidades vendidas y ventas por región.",
+        "spec": {
+            "version": "1.1",
+            "title": "Resumen del Último Trimestre",
+            "description": "Resumen ejecutivo de ventas totales, unidades vendidas y distribución por región durante el último trimestre.",
+            "dataset": "demo_sales",
+            "global_filters": [
+                {
+                    "field": "sold_at",
+                    "operator": "previous_quarter",
+                    "value": null
+                }
+            ],
+            "visualizations": [
+                {
+                    "key": "kpi_total_sales",
+                    "title": "Ventas Totales",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_sales",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 6,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "kpi_total_quantity",
+                    "title": "Unidades Vendidas",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "quantity",
+                                "aggregation": "sum",
+                                "alias": "total_quantity",
+                                "format": "integer"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 6,
+                        "y": 0,
+                        "width": 6,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "bar_sales_by_region",
+                    "title": "Ventas por Región",
+                    "type": "bar",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "region_sales",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "region"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "region_sales",
+                                "direction": "desc"
+                            }
+                        ],
+                        "limit": 10
+                    },
+                    "display": {
+                        "x_axis": "region",
+                        "y_axis": "region_sales"
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 2,
+                        "width": 12,
+                        "height": 4
+                    }
+                }
+            ],
+            "layout": {
+                "columns": 12
+            }
+        }
+    },
+    {
+        "title": "Evolución de Ingresos y Productos Más Vendidos",
+        "description": "Panel de control con la evolución mensual de ingresos y los 5 productos más vendidos.",
+        "original_prompt": "Evolución mensual de los ingresos y los 5 productos más vendidos.",
+        "spec": {
+            "version": "1.1",
+            "title": "Evolución de Ingresos y Productos Más Vendidos",
+            "description": "Panel de control con la evolución mensual de ingresos y los 5 productos más vendidos.",
+            "dataset": "demo_sales",
+            "global_filters": [],
+            "visualizations": [
+                {
+                    "key": "kpi_total_revenue",
+                    "title": "Ingresos Totales",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_ingresos",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 6,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "kpi_total_units",
+                    "title": "Unidades Vendidas",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "quantity",
+                                "aggregation": "sum",
+                                "alias": "total_unidades",
+                                "format": "integer"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 6,
+                        "y": 0,
+                        "width": 6,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "revenue_trend",
+                    "title": "Evolución Mensual de Ingresos",
+                    "type": "line",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "ingresos",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "sold_at"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "sold_at",
+                                "direction": "asc"
+                            }
+                        ],
+                        "limit": 100
+                    },
+                    "display": {
+                        "x_axis": "sold_at",
+                        "y_axis": "ingresos"
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 2,
+                        "width": 6,
+                        "height": 4
+                    }
+                },
+                {
+                    "key": "top_products",
+                    "title": "Top 5 Productos Más Vendidos",
+                    "type": "bar",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "quantity",
+                                "aggregation": "sum",
+                                "alias": "unidades_vendidas",
+                                "format": "integer"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "product_name"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "unidades_vendidas",
+                                "direction": "desc"
+                            }
+                        ],
+                        "limit": 5
+                    },
+                    "display": {
+                        "x_axis": "product_name",
+                        "y_axis": "unidades_vendidas"
+                    },
+                    "layout": {
+                        "x": 6,
+                        "y": 2,
+                        "width": 6,
+                        "height": 4
+                    }
+                }
+            ],
+            "layout": {
+                "columns": 12
+            }
+        }
+    },
+    {
+        "title": "Rendimiento del Equipo Comercial",
+        "description": "Análisis de rendimiento de ventas desglosado por vendedor y por equipo comercial.",
+        "original_prompt": "Rendimiento del equipo comercial: ventas por vendedor y por equipo.",
+        "spec": {
+            "version": "1.1",
+            "title": "Rendimiento del Equipo Comercial",
+            "description": "Análisis de rendimiento de ventas desglosado por vendedor y por equipo comercial.",
+            "dataset": "demo_sales",
+            "global_filters": [],
+            "visualizations": [
+                {
+                    "key": "kpi_total_ventas",
+                    "title": "Total Ventas",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_ventas",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 4,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "kpi_total_unidades",
+                    "title": "Total Unidades Vendidas",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "quantity",
+                                "aggregation": "sum",
+                                "alias": "total_unidades",
+                                "format": "integer"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 4,
+                        "y": 0,
+                        "width": 4,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "kpi_promedio_venta",
+                    "title": "Promedio por Venta",
+                    "type": "kpi",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "avg",
+                                "alias": "promedio_venta",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [],
+                        "filters": [],
+                        "order_by": [],
+                        "limit": 1
+                    },
+                    "display": {
+                        "show_comparison": false
+                    },
+                    "layout": {
+                        "x": 8,
+                        "y": 0,
+                        "width": 4,
+                        "height": 2
+                    }
+                },
+                {
+                    "key": "bar_ventas_equipo",
+                    "title": "Ventas por Equipo",
+                    "type": "bar",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_ventas",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "team"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "total_ventas",
+                                "direction": "desc"
+                            }
+                        ],
+                        "limit": 10
+                    },
+                    "display": {
+                        "x_axis": "team",
+                        "y_axis": "total_ventas"
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 2,
+                        "width": 6,
+                        "height": 4
+                    }
+                },
+                {
+                    "key": "bar_ventas_vendedor",
+                    "title": "Top Vendedores por Ventas",
+                    "type": "bar",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_ventas",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "salesperson"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "total_ventas",
+                                "direction": "desc"
+                            }
+                        ],
+                        "limit": 10
+                    },
+                    "display": {
+                        "x_axis": "salesperson",
+                        "y_axis": "total_ventas"
+                    },
+                    "layout": {
+                        "x": 6,
+                        "y": 2,
+                        "width": 6,
+                        "height": 4
+                    }
+                },
+                {
+                    "key": "table_rendimiento_vendedores",
+                    "title": "Rendimiento Detallado por Vendedor",
+                    "type": "table",
+                    "query": {
+                        "metrics": [
+                            {
+                                "field": "total_amount",
+                                "aggregation": "sum",
+                                "alias": "total_ventas",
+                                "format": "currency"
+                            },
+                            {
+                                "field": "quantity",
+                                "aggregation": "sum",
+                                "alias": "total_unidades",
+                                "format": "integer"
+                            },
+                            {
+                                "field": "total_amount",
+                                "aggregation": "avg",
+                                "alias": "ticket_promedio",
+                                "format": "currency"
+                            }
+                        ],
+                        "dimensions": [
+                            {
+                                "field": "salesperson"
+                            },
+                            {
+                                "field": "team"
+                            }
+                        ],
+                        "filters": [],
+                        "order_by": [
+                            {
+                                "field": "total_ventas",
+                                "direction": "desc"
+                            }
+                        ],
+                        "limit": 20
+                    },
+                    "display": {
+                        "columns": [
+                            "salesperson",
+                            "team",
+                            "total_ventas",
+                            "total_unidades",
+                            "ticket_promedio"
+                        ]
+                    },
+                    "layout": {
+                        "x": 0,
+                        "y": 6,
+                        "width": 12,
+                        "height": 4
+                    }
+                }
+            ],
+            "layout": {
+                "columns": 12
+            }
+        }
+    }
+]

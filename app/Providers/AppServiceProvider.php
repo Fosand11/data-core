@@ -67,10 +67,18 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('dashboard-generation', function (Request $request): array {
             $key = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
 
-            return [
+            $limits = [
                 Limit::perMinute(max(1, (int) config('dashboard-ai.rate_limit.per_minute')))->by("minute:{$key}"),
                 Limit::perHour(max(1, (int) config('dashboard-ai.rate_limit.per_hour')))->by("hour:{$key}"),
             ];
+
+            $globalPerDay = (int) config('dashboard-ai.rate_limit.global_per_day');
+
+            if ($globalPerDay > 0) {
+                $limits[] = Limit::perDay($globalPerDay)->by('day:global');
+            }
+
+            return $limits;
         });
     }
 }

@@ -137,6 +137,39 @@ class DashboardGenerationTest extends TestCase
         $this->assertDatabaseCount('dashboards', 3);
     }
 
+    public function test_the_global_daily_limit_is_shared_by_every_user(): void
+    {
+        Queue::fake();
+        config()->set('dashboard-ai.rate_limit.global_per_day', 2);
+        [, $user] = $this->ownerContext();
+        [, $otherUser] = $this->ownerContext();
+        $payload = ['prompt' => 'Muéstrame las ventas por región del último trimestre.'];
+
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        $this->actingAs($otherUser)->post(route('dashboards.store'), $payload)->assertRedirect();
+
+        // Both users are well inside their own limits, but the shared budget is spent.
+        $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertStatus(429);
+        $this->actingAs($otherUser)->post(route('dashboards.store'), $payload)->assertStatus(429);
+
+        $this->assertDatabaseCount('dashboards', 2);
+    }
+
+    public function test_the_global_daily_limit_is_off_by_default(): void
+    {
+        Queue::fake();
+        config()->set('dashboard-ai.rate_limit.per_minute', 50);
+        config()->set('dashboard-ai.rate_limit.per_hour', 50);
+        [, $user] = $this->ownerContext();
+        $payload = ['prompt' => 'Muéstrame las ventas por región del último trimestre.'];
+
+        $this->assertSame(0, config('dashboard-ai.rate_limit.global_per_day'));
+
+        foreach (range(1, 5) as $ignored) {
+            $this->actingAs($user)->post(route('dashboards.store'), $payload)->assertRedirect();
+        }
+    }
+
     public function test_real_job_transitions_from_queued_through_generating_to_ready(): void
     {
         [$tenant, $user] = $this->ownerContext();
