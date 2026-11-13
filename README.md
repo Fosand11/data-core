@@ -2,9 +2,13 @@
 
 **Pregúntale a tus datos.** SaaS multi-tenant donde describes en lenguaje natural lo que quieres entender y la IA diseña el dashboard. Lo valida, calcula los números en tu propio servidor y te deja refinarlo, buscarlo y exportarlo.
 
-![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
+**▶ Demo en vivo: <https://insightflow-3j5k.onrender.com>**. Crea una cuenta con cualquier correo y tendrás una organización con datos de ejemplo lista para preguntar.
+
+![Flujo completo: preguntar en lenguaje natural, ver el dashboard, buscar, refinar con IA y exportar](.github/images/demo.gif)
 
 > Proyecto de portfolio de [Cifra Studios](https://cifra-studios-core.vercel.app/). Laravel 12 · PHP 8.4 · Vue 3 + TypeScript · Inertia · ECharts · Gemini / OpenAI.
+>
+> El demo corre en un plan gratuito: si la primera carga tarda, el servicio está despertando. Las generaciones con IA tienen un límite diario compartido por todos los visitantes.
 
 ## Qué puedes hacer
 
@@ -21,6 +25,8 @@ Pides un cambio («cambia las barras por un gráfico circular») y la IA propone
 ![Vista previa de un cambio propuesto por la IA](.github/images/refine.webp)
 
 ### 3. Claro y oscuro, buscador y exportación
+
+![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
 
 | Buscador `⌘K` | Exportar |
 | --- | --- |
