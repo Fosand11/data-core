@@ -160,11 +160,18 @@ flowchart LR
   nativas editables. También se puede imprimir. El PDF lo escribe un generador
   propio mínimo, sin dependencias nuevas. Los CSV protegen contra la inyección de
   fórmulas y se abren en Excel (UTF-8 con BOM).
-- Asistente de ayuda, sin IA y sin costo: pregunta «¿qué visuales tienes?»,
-  «sugiéreme algo», «¿qué no puedes hacer?» o «¿qué puedo hacer?» en el cuadro de
-  pregunta y responde con contenido fijo adaptado a tus columnas (qué visuales
-  admiten tus datos, preguntas sugeridas con los nombres de tus columnas, los
-  límites de la herramienta). No consume el límite de generaciones.
+- Asistente de ayuda en tres capas. (1) Contenido fijo, gratis e instantáneo:
+  pregunta «¿qué visuales tienes?», «sugiéreme algo», «¿qué no puedes hacer?» o
+  «¿qué puedo hacer?» y responde adaptado a tus columnas (qué visuales admiten tus
+  datos, preguntas con los nombres de tus columnas, los límites reales). (2) Si la
+  frase es una pregunta sobre el producto que las reglas no reconocen, responde
+  Gemini **solo desde una ficha de hechos** (nunca desde tus filas), en texto
+  plano, con respuesta corta, presupuesto propio por usuario y por día, y sin
+  guardar ni registrar la pregunta. Una pregunta sobre tus datos («¿cuánto vendimos
+  en octubre?») no gasta esa llamada: va directo a generar el dashboard. (3) Si el
+  modelo está apagado, sin presupuesto o falla, vuelve al contenido fijo: una
+  pregunta sobre el producto nunca se convierte en un dashboard. Nada de esto
+  consume el límite de generaciones.
 
 ## Arquitectura en breve
 
@@ -288,6 +295,13 @@ contenido enviado para mejorar sus productos, por eso la app sólo envía tu
 solicitud y el catálogo estático (nunca filas, ids internos ni secretos) y avisa
 en la pantalla de creación. Los nombres de modelo cambian con frecuencia:
 comprueba el vigente en la documentación de Gemini antes de fijarlo.
+
+Las respuestas de ayuda con Gemini (`DASHBOARD_AI_HELP_*`) usan la misma clave y
+la misma cuota gratuita. Lo que sale hacia Google es la pregunta escrita, la ficha
+de hechos del producto y los **nombres** de las columnas del archivo elegido; no
+salen filas, identificadores ni datos de la cuenta, y la pregunta no se guarda ni
+se registra en los logs. Con `DASHBOARD_AI_HELP_ENABLED=false` solo responde el
+contenido fijo.
 
 ## Dependencia del backend añadida con justificación
 
