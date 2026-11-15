@@ -4,6 +4,7 @@ namespace App\Domain\Dashboards\Models;
 
 use App\Domain\Dashboards\Enums\DashboardGenerationKind;
 use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
+use App\Domain\Tenancy\Concerns\BelongsToTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Database\Factories\DashboardGenerationFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DashboardGeneration extends Model
 {
     /** @use HasFactory<DashboardGenerationFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     protected $fillable = [
         'tenant_id',

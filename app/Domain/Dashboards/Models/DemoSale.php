@@ -2,6 +2,7 @@
 
 namespace App\Domain\Dashboards\Models;
 
+use App\Domain\Tenancy\Concerns\BelongsToTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use Database\Factories\DemoSaleFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DemoSale extends Model
 {
     /** @use HasFactory<DemoSaleFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     protected $fillable = [
         'tenant_id',

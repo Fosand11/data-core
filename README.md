@@ -60,9 +60,22 @@ flowchart LR
   sin HTML, referencias coherentes. Solo un spec válido se ejecuta, y el ejecutor lo traduce
   a consultas estructuradas con valores por _bindings_ e identificadores del catálogo.
 - **Aislamiento por tenant en cada capa.** UUID en todos los recursos, `tenant_id`
-  con clave foránea, Policies y un `CurrentTenant` que se revalida en cada petición.
-  Un `tenant_id` enviado en el request se rechaza. Cada recurso nuevo lleva una
-  prueba positiva y otra cross-tenant.
+  con clave foránea e índice, Policies y un `CurrentTenant` que se revalida en cada
+  petición. Un `tenant_id` enviado en el request se rechaza.
+  - **Filtro global que falla cerrado.** Todo modelo con `tenant_id` usa
+    `BelongsToTenant`: sus consultas se restringen a la organización actual aunque
+    alguien olvide un `where`, y sin organización en contexto no se ve nada (no
+    «todo»). Además nunca se crea un registro para otra organización ni se le cambia
+    el dueño.
+  - **Lo ajeno no existe.** El dashboard de otra organización responde 404, idéntico
+    a un id inexistente, y no 403 (que revelaría que existe).
+  - **Trabajos en segundo plano.** Un job no tiene petición, así que entra
+    explícitamente a la organización de su generación antes de tocar datos.
+  - **Cada organización tiene su propia copia** de los datos de ejemplo.
+  - **Verificado con pruebas** que fallan si se quita cualquiera de estas
+    protecciones, incluido un barrido automático de todas las rutas con dashboard y
+    reglas de esquema (clave foránea e índice por organización). La batería completa
+    también pasa en PostgreSQL.
 - **Proveedores intercambiables.** `fake` (determinista, para desarrollo y tests),
   `gemini` (plan gratuito de Google AI Studio) y `openai`, detrás de una misma
   interfaz. Un valor ausente o desconocido falla de forma explícita.

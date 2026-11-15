@@ -380,9 +380,9 @@ class DashboardRefinementTest extends TestCase
         ]);
         $mine = $this->readyDashboard();
 
-        $this->actingAs($this->owner)->post(route('dashboards.refinements.store', $foreign), ['instruction' => 'quita los filtros'])->assertForbidden();
-        $this->actingAs($this->owner)->post(route('dashboards.refinements.apply', [$foreign, $foreignProposal]))->assertForbidden();
-        $this->actingAs($this->owner)->post(route('dashboards.versions.restore', [$foreign, 1]))->assertForbidden();
+        $this->actingAs($this->owner)->post(route('dashboards.refinements.store', $foreign), ['instruction' => 'quita los filtros'])->assertNotFound();
+        $this->actingAs($this->owner)->post(route('dashboards.refinements.apply', [$foreign, $foreignProposal]))->assertNotFound();
+        $this->actingAs($this->owner)->post(route('dashboards.versions.restore', [$foreign, 1]))->assertNotFound();
         // My dashboard with somebody else's refinement id.
         $this->actingAs($this->owner)->post(route('dashboards.refinements.apply', [$mine, $foreignProposal]))->assertNotFound();
         $this->actingAs($this->owner)->delete(route('dashboards.refinements.discard', [$mine, $foreignProposal]))->assertNotFound();

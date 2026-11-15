@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import DashboardCard from '@/components/DashboardCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import InputError from '@/components/InputError.vue';
+import { MAX_PROMPT_LENGTH, useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, DashboardSummary, SharedData, TenantOption } from '@/types';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ArrowUp, Building2, Database } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { ArrowUp, Building2, Database, LoaderCircle } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 
 defineProps<{
     currentTenant: CurrentTenant | null;
@@ -29,24 +31,23 @@ const today = computed(() => {
     return text.charAt(0).toUpperCase() + text.slice(1);
 });
 
-const prompt = ref('');
-const canSubmit = computed(() => prompt.value.trim().length >= 10);
+// Enter here creates the dashboard directly: no second screen, no second Enter.
+const { form, canSubmit, submit, handleKeydown } = useDashboardPrompt();
+const promptInput = ref<HTMLTextAreaElement | null>(null);
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Inicio', href: '/dashboard' }];
 const suggestions = ['Ventas por región', 'Ingresos de los últimos meses', 'Productos con menor rendimiento', 'Rendimiento del equipo comercial'];
 
-const createDashboard = () => {
-    if (!canSubmit.value) return;
-
-    router.get(route('dashboards.create'), { prompt: prompt.value.trim() });
+// A suggestion fills the box (so it can be tweaked) and leaves the cursor in it.
+const selectSuggestion = (suggestion: string) => {
+    form.prompt = suggestion;
+    promptInput.value?.focus();
 };
 
-const handleKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
-
-    event.preventDefault();
-    createDashboard();
-};
+// Ready to type on arrival, but not on touch screens, where it would pop the keyboard.
+onMounted(() => {
+    if (window.matchMedia('(pointer: fine)').matches) promptInput.value?.focus();
+});
 </script>
 
 <template>
@@ -69,15 +70,18 @@ const handleKeydown = (event: KeyboardEvent) => {
                 </header>
 
                 <section class="motion-reveal-delayed mt-8" aria-label="Crear un dashboard">
-                    <form class="insight-panel p-2 focus-within:border-primary/40" @submit.prevent="createDashboard">
+                    <form class="insight-panel p-2 focus-within:border-primary/40" @submit.prevent="submit">
                         <label for="ai-prompt" class="sr-only">Describe el dashboard que necesitas</label>
                         <textarea
                             id="ai-prompt"
-                            v-model="prompt"
+                            ref="promptInput"
+                            v-model="form.prompt"
                             rows="3"
-                            maxlength="2000"
-                            class="min-h-28 w-full resize-none border-0 bg-transparent px-4 pb-2 pt-4 text-lg leading-7 tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-0 sm:text-xl"
+                            :maxlength="MAX_PROMPT_LENGTH"
+                            :readonly="form.processing"
+                            class="min-h-28 w-full resize-none border-0 bg-transparent px-4 pb-2 pt-4 text-lg leading-7 tracking-tight text-foreground outline-none placeholder:text-muted-foreground/70 read-only:opacity-70 focus:ring-0 sm:text-xl"
                             placeholder="¿Qué te gustaría entender hoy?"
+                            :aria-invalid="form.errors.prompt ? 'true' : undefined"
                             @keydown="handleKeydown"
                         />
                         <div class="flex items-center justify-between gap-3 px-3 pb-2 pt-1">
@@ -91,10 +95,15 @@ const handleKeydown = (event: KeyboardEvent) => {
                                 class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-all hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
                                 aria-label="Crear dashboard"
                             >
-                                <ArrowUp class="size-5" aria-hidden="true" />
+                                <LoaderCircle v-if="form.processing" class="size-5 animate-spin" aria-hidden="true" />
+                                <ArrowUp v-else class="size-5" aria-hidden="true" />
                             </button>
                         </div>
                     </form>
+                    <InputError class="mt-2 px-2" :message="form.errors.prompt" />
+                    <p v-if="form.processing" class="mt-3 px-2 text-sm text-muted-foreground" role="status">
+                        Diseñando tu dashboard… puede tardar unos segundos.
+                    </p>
 
                     <div class="mt-4 flex flex-wrap gap-2" role="list" aria-label="Sugerencias">
                         <button
@@ -103,7 +112,7 @@ const handleKeydown = (event: KeyboardEvent) => {
                             type="button"
                             role="listitem"
                             class="rounded-full border bg-card px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            @click="prompt = suggestion"
+                            @click="selectSuggestion(suggestion)"
                         >
                             {{ suggestion }}
                         </button>

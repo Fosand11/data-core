@@ -354,7 +354,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('dashboards.show', $foreignDashboard))
-            ->assertForbidden();
+            ->assertNotFound();
 
         app(CurrentTenant::class)->set($tenant);
         $this->assertFalse(Gate::forUser($user)->allows('update', $foreignDashboard));

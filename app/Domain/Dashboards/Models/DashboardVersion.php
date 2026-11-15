@@ -2,6 +2,7 @@
 
 namespace App\Domain\Dashboards\Models;
 
+use App\Domain\Tenancy\Concerns\BelongsToTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class DashboardVersion extends Model
 {
-    use HasUuids;
+    use BelongsToTenant, HasUuids;
 
     public const SOURCE_GENERATED = 'generated';
 

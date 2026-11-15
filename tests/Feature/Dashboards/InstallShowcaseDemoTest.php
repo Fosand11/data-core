@@ -5,6 +5,7 @@ namespace Tests\Feature\Dashboards;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Dashboards\Enums\DashboardStatus;
 use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\DashboardVersion;
 use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Queries\DashboardQueryExecutor;
 use App\Domain\Tenancy\CurrentTenant;
@@ -41,13 +42,13 @@ class InstallShowcaseDemoTest extends TestCase
 
         $this->assertTrue(Hash::check(self::PASSWORD, $user->password));
         $this->assertNotNull($user->email_verified_at);
-        $this->assertGreaterThan(0, DemoSale::query()->forTenant($tenant)->count());
+        $this->assertGreaterThan(0, DemoSale::withoutTenantScope()->forTenant($tenant)->count());
 
-        $dashboards = Dashboard::query()->where('tenant_id', $tenant->getKey())->get();
+        $dashboards = Dashboard::withoutTenantScope()->where('tenant_id', $tenant->getKey())->get();
 
         $this->assertCount(3, $dashboards);
         $this->assertTrue($dashboards->every(fn (Dashboard $dashboard): bool => $dashboard->status === DashboardStatus::Ready));
-        $this->assertTrue($dashboards->every(fn (Dashboard $dashboard): bool => $dashboard->versions()->count() === 1));
+        $this->assertTrue($dashboards->every(fn (Dashboard $dashboard): bool => DashboardVersion::withoutTenantScope()->where('dashboard_id', $dashboard->getKey())->count() === 1));
     }
 
     public function test_every_sample_dashboard_runs_against_the_demo_data(): void
@@ -58,7 +59,7 @@ class InstallShowcaseDemoTest extends TestCase
         app(CurrentTenant::class)->set($tenant);
         $executor = $this->app->make(DashboardQueryExecutor::class);
 
-        foreach (Dashboard::query()->where('tenant_id', $tenant->getKey())->get() as $dashboard) {
+        foreach (Dashboard::withoutTenantScope()->where('tenant_id', $tenant->getKey())->get() as $dashboard) {
             $results = $executor->execute(DashboardSpec::fromArray($dashboard->dashboard_spec));
 
             $this->assertNotEmpty($results, "{$dashboard->title} has no results");
@@ -75,20 +76,20 @@ class InstallShowcaseDemoTest extends TestCase
         $this->artisan('demo:install')->assertSuccessful();
 
         $this->assertSame(1, User::query()->count());
-        $this->assertSame(3, Dashboard::query()->count());
+        $this->assertSame(3, Dashboard::withoutTenantScope()->count());
     }
 
     public function test_demo_dashboards_are_invisible_to_other_organizations(): void
     {
         $this->artisan('demo:install')->assertSuccessful();
 
-        $demoDashboard = Dashboard::query()->firstOrFail();
+        $demoDashboard = Dashboard::withoutTenantScope()->firstOrFail();
         $stranger = Tenant::factory()->create();
         $outsider = User::factory()->ownerOf($stranger)->create();
 
         $this->actingAs($outsider)
             ->get(route('dashboards.show', $demoDashboard))
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_a_missing_or_weak_password_is_rejected_without_creating_anything(): void
@@ -100,7 +101,7 @@ class InstallShowcaseDemoTest extends TestCase
         $this->artisan('demo:install')->assertFailed();
 
         $this->assertSame(0, User::query()->count());
-        $this->assertSame(0, Dashboard::query()->count());
+        $this->assertSame(0, Dashboard::withoutTenantScope()->count());
     }
 
     public function test_an_invalid_email_is_rejected(): void

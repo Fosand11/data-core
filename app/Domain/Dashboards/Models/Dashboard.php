@@ -3,6 +3,7 @@
 namespace App\Domain\Dashboards\Models;
 
 use App\Domain\Dashboards\Enums\DashboardStatus;
+use App\Domain\Tenancy\Concerns\BelongsToTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Models\User;
 use Database\Factories\DashboardFactory;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Dashboard extends Model
 {
     /** @use HasFactory<DashboardFactory> */
-    use HasFactory, HasUuids;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     protected $fillable = [
         'tenant_id',

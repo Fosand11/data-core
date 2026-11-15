@@ -29,11 +29,11 @@ class DemoSalesTenancyTest extends TestCase
         $inserted = app(SeedDemoSales::class)->execute($tenant, 250);
 
         $this->assertSame(250, $inserted);
-        $this->assertSame(250, DemoSale::query()->forTenant($tenant)->count());
-        $this->assertSame(0, DemoSale::query()->forTenant($other)->count());
-        $this->assertSame(0, DemoSale::query()->forTenant($tenant)->where('sold_at', '>', now())->count());
-        $this->assertSame(0, DemoSale::query()->forTenant($tenant)->where('sold_at', '<', now()->subDays(367))->count());
-        $this->assertSame(4, DemoSale::query()->forTenant($tenant)->distinct()->count('region'));
+        $this->assertSame(250, DemoSale::withoutTenantScope()->forTenant($tenant)->count());
+        $this->assertSame(0, DemoSale::withoutTenantScope()->forTenant($other)->count());
+        $this->assertSame(0, DemoSale::withoutTenantScope()->forTenant($tenant)->where('sold_at', '>', now())->count());
+        $this->assertSame(0, DemoSale::withoutTenantScope()->forTenant($tenant)->where('sold_at', '<', now()->subDays(367))->count());
+        $this->assertSame(4, DemoSale::withoutTenantScope()->forTenant($tenant)->distinct()->count('region'));
     }
 
     public function test_seeding_is_deterministic_per_tenant_and_differs_between_tenants(): void
@@ -42,7 +42,7 @@ class DemoSalesTenancyTest extends TestCase
         $second = Tenant::factory()->create();
         $seed = app(SeedDemoSales::class);
 
-        $fingerprint = fn (Tenant $tenant): array => DemoSale::query()
+        $fingerprint = fn (Tenant $tenant): array => DemoSale::withoutTenantScope()
             ->forTenant($tenant)
             ->orderBy('product_id')->orderBy('total_amount')->orderBy('region')->orderBy('salesperson')
             ->get(['product_id', 'total_amount', 'region', 'salesperson'])
@@ -51,7 +51,7 @@ class DemoSalesTenancyTest extends TestCase
 
         $seed->execute($first, 120);
         $firstRun = $fingerprint($first);
-        DemoSale::query()->forTenant($first)->delete();
+        DemoSale::withoutTenantScope()->forTenant($first)->delete();
         $seed->execute($first, 120);
         $seed->execute($second, 120);
 
@@ -70,8 +70,8 @@ class DemoSalesTenancyTest extends TestCase
             'password_confirmation' => 'password',
         ])->assertRedirect();
 
-        $this->assertSame(600, DemoSale::query()->count());
-        $this->assertSame(1, DemoSale::query()->distinct()->count('tenant_id'));
+        $this->assertSame(600, DemoSale::withoutTenantScope()->count());
+        $this->assertSame(1, DemoSale::withoutTenantScope()->distinct()->count('tenant_id'));
     }
 
     public function test_registration_does_not_seed_when_disabled(): void
@@ -85,7 +85,7 @@ class DemoSalesTenancyTest extends TestCase
             'password_confirmation' => 'password',
         ])->assertRedirect();
 
-        $this->assertSame(0, DemoSale::query()->count());
+        $this->assertSame(0, DemoSale::withoutTenantScope()->count());
     }
 
     public function test_policy_allows_current_tenant_members_and_rejects_foreign_sales(): void
@@ -211,6 +211,6 @@ class DemoSalesTenancyTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('dashboards.show', $foreignDashboard))
-            ->assertForbidden();
+            ->assertNotFound();
     }
 }
