@@ -1,6 +1,6 @@
-# InsightFlow
+# Atisbo
 
-**Pregúntale a tus datos.** SaaS multi-tenant donde describes en lenguaje natural lo que quieres entender y la IA diseña el dashboard. Lo valida, calcula los números en tu propio servidor y te deja refinarlo, buscarlo y exportarlo.
+**Pregúntale a tus datos.** *Atisbo* (de «atisbar»: ver algo con atención, un vistazo que descubre algo) es un SaaS multi-tenant donde describes en lenguaje natural lo que quieres entender y la IA diseña el dashboard. Lo valida, calcula los números en tu propio servidor y te deja refinarlo, buscarlo y exportarlo.
 
 **▶ Demo en vivo: <https://insightflow-3j5k.onrender.com>**. Crea una cuenta con cualquier correo y tendrás una organización con datos de ejemplo lista para preguntar.
 
