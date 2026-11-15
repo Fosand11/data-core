@@ -14,6 +14,7 @@ const form = useForm({
     email: '',
     password: '',
     password_confirmation: '',
+    privacy: false,
 });
 
 const submit = () => {
@@ -88,6 +89,27 @@ const submit = () => {
                         placeholder="Repite tu contraseña"
                     />
                     <InputError :message="form.errors.password_confirmation" />
+                </div>
+
+                <div class="grid gap-2">
+                    <label for="privacy" class="flex cursor-pointer items-start gap-3 text-sm leading-6 text-muted-foreground">
+                        <input
+                            id="privacy"
+                            v-model="form.privacy"
+                            type="checkbox"
+                            required
+                            class="mt-1 size-4 shrink-0 rounded border-border text-primary focus:ring-primary"
+                            :aria-invalid="form.errors.privacy ? 'true' : undefined"
+                            :aria-describedby="form.errors.privacy ? 'privacy-error' : undefined"
+                        />
+                        <span>
+                            He leído y acepto la
+                            <a :href="route('privacy')" target="_blank" rel="noopener" class="font-medium text-primary hover:underline"
+                                >política de privacidad</a
+                            >.
+                        </span>
+                    </label>
+                    <InputError id="privacy-error" :message="form.errors.privacy" />
                 </div>
 
                 <AppButton type="submit" class="mt-1 w-full" :loading="form.processing">

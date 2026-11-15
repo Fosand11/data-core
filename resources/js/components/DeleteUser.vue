@@ -48,7 +48,8 @@ const closeModal = () => {
                 <p class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-error">Zona irreversible</p>
                 <h2 id="delete-account-title" class="mt-2 text-xl font-semibold tracking-tight text-foreground">Eliminar esta cuenta</h2>
                 <p class="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                    Esta acción elimina permanentemente tu cuenta y no se puede deshacer.
+                    Esta acción elimina permanentemente tu cuenta, tu organización y todos sus datos: archivos importados, dashboards y su historial.
+                    No se puede deshacer.
                 </p>
             </div>
             <Dialog>
@@ -60,7 +61,9 @@ const closeModal = () => {
                         <DialogHeader class="space-y-3">
                             <DialogTitle>¿Quieres eliminar tu cuenta?</DialogTitle>
                             <DialogDescription>
-                                La cuenta y sus datos se eliminarán permanentemente. Escribe tu contraseña para confirmar esta decisión.
+                                Se eliminarán de inmediato tu cuenta, tu organización y todo lo que contiene (conjuntos de datos y sus filas,
+                                dashboards, versiones). Si la organización tiene otras personas, continuará sin ti. Escribe tu contraseña para
+                                confirmar.
                             </DialogDescription>
                         </DialogHeader>
 

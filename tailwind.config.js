@@ -12,7 +12,7 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'Inter Variable', 'Inter', ...defaultTheme.fontFamily.sans],
             },
             fontSize: {
                 display: ['3rem', { lineHeight: '1.08', fontWeight: '700' }],

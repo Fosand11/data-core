@@ -23,7 +23,7 @@ use Throwable;
 final class UploadDataset
 {
     /** A file nobody confirmed within this many hours is thrown away. */
-    private const ABANDONED_AFTER_HOURS = 24;
+    public const ABANDONED_AFTER_HOURS = 24;
 
     public function __construct(
         private readonly CurrentTenant $currentTenant,

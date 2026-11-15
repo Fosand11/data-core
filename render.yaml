@@ -89,5 +89,8 @@ services:
         value: "8"
       - key: DASHBOARD_AI_HELP_GLOBAL_PER_DAY
         value: "100"
+      # Where people send privacy requests; shown on /privacidad. Set it in the dashboard.
+      - key: PRIVACY_CONTACT_EMAIL
+        sync: false
       - key: TENANCY_SEED_DEMO_DATA
         value: "true"
