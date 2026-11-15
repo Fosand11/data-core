@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import { useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { ArrowUp, Database, LoaderCircle, ShieldCheck } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
@@ -14,16 +15,12 @@ const props = defineProps<{
     providerModel: string | null;
 }>();
 
-const form = useForm({
-    prompt: props.initialPrompt,
-});
+const { form, canSubmit, submit, handleKeydown: handlePromptKeydown } = useDashboardPrompt(props.initialPrompt);
 const promptInput = ref<HTMLTextAreaElement | null>(null);
 
 const providerNames: Record<string, string> = { gemini: 'Gemini', openai: 'OpenAI', fake: 'Simulador local' };
 const providerLabel = computed(() => providerNames[props.provider] ?? props.provider);
 const isExternalProvider = computed(() => props.provider === 'gemini' || props.provider === 'openai');
-const canSubmit = computed(() => !form.processing && form.prompt.trim().length >= 10);
-
 const suggestions = [
     'Muéstrame las ventas por región del último trimestre.',
     'Comparar ingresos con el periodo anterior.',
@@ -37,14 +34,6 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboards', href: '/dashboards' },
     { title: 'Nueva pregunta', href: '/dashboards/create' },
 ];
-
-const submit = () => {
-    if (!canSubmit.value) return;
-
-    form.post(route('dashboards.store'), {
-        preserveScroll: true,
-    });
-};
 
 const resizePrompt = async () => {
     await nextTick();
@@ -60,13 +49,6 @@ const resizePrompt = async () => {
 const selectSuggestion = (suggestion: string) => {
     form.prompt = suggestion;
     promptInput.value?.focus();
-};
-
-const handlePromptKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
-
-    event.preventDefault();
-    submit();
 };
 
 watch(() => form.prompt, resizePrompt);

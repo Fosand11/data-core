@@ -2,6 +2,7 @@
 import DashboardStatusBadge from '@/components/DashboardStatusBadge.vue';
 import { useAppearance } from '@/composables/useAppearance';
 import { useCommandPalette } from '@/composables/useCommandPalette';
+import { createDashboardFrom } from '@/composables/useDashboardPrompt';
 import type { DashboardSummary, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/vue3';
 import { LayoutGrid, LoaderCircle, Monitor, Moon, Plus, Search, Settings, Sparkles, Sun, WandSparkles, type LucideIcon } from 'lucide-vue-next';
@@ -84,9 +85,12 @@ const askEntry = computed<Entry[]>(() =>
                   group: 'Preguntar',
                   label: `Crear con IA: “${term.value}”`,
                   icon: WandSparkles,
+                  // Creates it right away: no intermediate screen asking for a second Enter.
                   run: () => {
+                      const prompt = term.value;
+
                       hide();
-                      router.get(route('dashboards.create'), { prompt: term.value });
+                      createDashboardFrom(prompt);
                   },
               },
           ]
