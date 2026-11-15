@@ -1,6 +1,7 @@
 import { lightThemeFor } from '@/composables/useChartTheme';
 import { appName } from '@/lib/brand';
 import { describeChart } from '@/lib/chartOptions';
+import { isChartType, renderDashboardSheets, tableColumns } from '@/lib/dashboardSheets';
 import { formatCell, formatValue } from '@/lib/format';
 import { describeFilter, labelFor } from '@/lib/labels';
 import type { DashboardSpec, DashboardVisualization, ExportContext, VisualizationColumn, VisualizationData, VisualizationResult } from '@/types';
@@ -16,8 +17,7 @@ const KPIS_PER_SLIDE = 6;
 const TABLE_ROWS_PER_SLIDE = 13;
 const CHART_IMAGE = { width: 1480, height: 636 };
 
-const isChart = (visualization: DashboardVisualization) =>
-    ['bar', 'hbar', 'line', 'area', 'pie', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'].includes(visualization.type);
+const isChart = isChartType;
 const columnTitle = (column: VisualizationColumn) => (column.type === 'month' ? 'Mes' : labelFor(column.key));
 
 /** Layout order: top to bottom, then left to right, as the dashboard reads on screen. */
@@ -83,6 +83,22 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
     cover.addText(appName(), { x: 0.8, y: 6.7, w: 4, h: 0.4, fontFace: FONT, fontSize: 12, bold: true, color: 'FFFFFF' });
 
     const ordered = inReadingOrder(spec.visualizations);
+
+    // --- The whole dashboard on one slide, as it looks on screen; a tall one continues on the next slide.
+    const sheets = await renderDashboardSheets(spec, data, context, { aspect: 16 / 9 });
+
+    sheets.forEach((sheet, index) => {
+        const slide = pptx.addSlide();
+
+        slide.addImage({
+            data: sheet.toDataURL('image/png'),
+            x: 0,
+            y: 0,
+            w: 13.333,
+            h: 7.5,
+            altText: sheets.length > 1 ? `Vista completa del dashboard, parte ${index + 1} de ${sheets.length}` : 'Vista completa del dashboard',
+        });
+    });
 
     // --- Key figures: every KPI on shared slides
     const kpis = ordered.filter((visualization) => visualization.type === 'kpi');
@@ -232,19 +248,4 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
     }
 
     return (await pptx.write({ outputType: 'blob' })) as Blob;
-}
-
-/** Table visualizations follow their configured columns; charts without a drawable plot fall back to every column. */
-function tableColumns(visualization: DashboardVisualization, result: VisualizationResult | undefined): VisualizationColumn[] {
-    if (!result) return [];
-
-    const configured = visualization.display.columns;
-
-    if (visualization.type === 'table' && Array.isArray(configured)) {
-        return configured
-            .map((key) => result.columns.find((column) => column.key === key))
-            .filter((column): column is VisualizationColumn => column !== undefined);
-    }
-
-    return result.columns;
 }
