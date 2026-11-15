@@ -23,6 +23,7 @@ use App\Domain\Dashboards\Queries\DashboardQueryExecutor;
 use App\Domain\Dashboards\Support\ChartPalettes;
 use App\Domain\Dashboards\Support\DashboardVersions;
 use App\Domain\Dashboards\Support\DatasetCatalogResolver;
+use App\Domain\Dashboards\Support\DatasetSuggestions;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Http\Controllers\Concerns\SharesNavigationProps;
@@ -44,6 +45,7 @@ class DashboardManagementController extends Controller
     public function __construct(
         private readonly CurrentTenant $currentTenant,
         private readonly DashboardGenerator $generator,
+        private readonly DatasetSuggestions $suggestions,
     ) {}
 
     public function index(Request $request): Response
@@ -314,6 +316,7 @@ class DashboardManagementController extends Controller
         $datasets = Dataset::query()
             ->where('status', DatasetStatus::Ready->value)
             ->orderBy('name')
+            ->with('columns')
             ->get(['id', 'name', 'row_count']);
         $requested = $request->query('dataset');
 
@@ -322,6 +325,7 @@ class DashboardManagementController extends Controller
                 'id' => $dataset->getKey(),
                 'name' => $dataset->name,
                 'row_count' => $dataset->row_count,
+                'suggestions' => $this->suggestions->for($dataset),
             ])->all(),
             'datasetId' => is_string($requested) && $datasets->contains('id', $requested) ? $requested : null,
         ];

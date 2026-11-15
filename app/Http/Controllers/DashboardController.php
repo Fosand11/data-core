@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Dashboards\Enums\DatasetStatus;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\Dataset;
+use App\Domain\Dashboards\Support\DatasetSuggestions;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Enums\TenantStatus;
 use App\Domain\Tenancy\Models\Tenant;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request, CurrentTenant $currentTenant): Response
+    public function index(Request $request, CurrentTenant $currentTenant, DatasetSuggestions $suggestions): Response
     {
         $tenant = $currentTenant->get();
         $dashboards = [];
@@ -31,8 +32,14 @@ class DashboardController extends Controller
             $datasets = Dataset::query()
                 ->where('status', DatasetStatus::Ready->value)
                 ->orderBy('name')
+                ->with('columns')
                 ->get(['id', 'name', 'row_count'])
-                ->map(fn (Dataset $dataset): array => ['id' => $dataset->getKey(), 'name' => $dataset->name, 'row_count' => $dataset->row_count])
+                ->map(fn (Dataset $dataset): array => [
+                    'id' => $dataset->getKey(),
+                    'name' => $dataset->name,
+                    'row_count' => $dataset->row_count,
+                    'suggestions' => $suggestions->for($dataset),
+                ])
                 ->all();
         }
 

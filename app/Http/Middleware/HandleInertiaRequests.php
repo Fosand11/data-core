@@ -53,6 +53,8 @@ class HandleInertiaRequests extends Middleware
             'pinnedDashboards' => fn (): array => $this->sidebarDashboards($request, pinned: true),
             'flash' => [
                 'status' => fn (): ?string => $request->session()->get('status'),
+                // The assistant's answer to a question about the app; shown once, then gone.
+                'assistant' => fn (): ?array => $request->session()->get('assistant'),
             ],
         ]);
     }

@@ -6,6 +6,7 @@ use App\Domain\Ai\Catalogs\DatasetCatalog;
 use App\Domain\Ai\Contracts\DashboardGenerator;
 use App\Domain\Ai\Data\DashboardGenerationInput;
 use App\Domain\Ai\Data\DashboardSpec;
+use App\Domain\Ai\Support\ColumnRoles;
 use Illuminate\Support\Str;
 
 final class FakeDashboardGenerator implements DashboardGenerator
@@ -273,14 +274,8 @@ final class FakeDashboardGenerator implements DashboardGenerator
         $labels = $catalog->labels();
         $label = fn (string $field): string => $labels[$field] ?? $field;
         // Identifiers, names, contact details: poor things to group a chart by, so they come last.
-        $byUsefulness = function (string $type) use ($fields): array {
-            $matching = array_keys(array_filter($fields, fn (string $fieldType): bool => $fieldType === $type));
-            usort($matching, fn (string $a, string $b): int => $this->isIdentifying($a) <=> $this->isIdentifying($b));
-
-            return $matching;
-        };
-        $texts = $byUsefulness('string');
-        $numerics = $byUsefulness('numeric');
+        $texts = ColumnRoles::byUsefulness($catalog, 'string');
+        $numerics = ColumnRoles::byUsefulness($catalog, 'numeric');
         $numeric = $numerics[0] ?? null;
         $text = $texts[0] ?? null;
         $date = $catalog->dateField();
@@ -346,16 +341,6 @@ final class FakeDashboardGenerator implements DashboardGenerator
         $title = Str::limit(trim($prompt) !== '' ? trim($prompt) : 'Resumen de tus datos', 100, '…');
 
         return $this->spec($title, 'Un resumen general de tus datos.', [], $visualizations, $catalog->dataset());
-    }
-
-    /**
-     * 1 for a column that identifies or contacts a person or record (id, name, e-mail,
-     * phone, address): it has a different value on nearly every row, so it makes a
-     * useless axis.
-     */
-    private function isIdentifying(string $field): int
-    {
-        return preg_match('/(^|_)(id|codigo|cod|correo|email|mail|nombre|name|telefono|tel|phone|direccion|address|url|folio)($|_)/i', Str::ascii($field)) === 1 ? 1 : 0;
     }
 
     /**
@@ -436,7 +421,7 @@ final class FakeDashboardGenerator implements DashboardGenerator
         }
 
         // Spread the categories over different columns so the extra charts are not all the same view.
-        $useful = array_values(array_filter($texts, fn (string $field): bool => $this->isIdentifying($field) === 0)) ?: $texts;
+        $useful = array_values(array_filter($texts, fn (string $field): bool => ! ColumnRoles::isIdentifying($field))) ?: $texts;
         $dimension = $useful[$row % count($useful)];
         $measure = $numerics[0] ?? array_key_first($catalog->fields());
         $aggregation = $numerics !== [] ? 'sum' : 'count';
