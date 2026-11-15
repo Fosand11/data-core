@@ -8,6 +8,7 @@ use App\Domain\Dashboards\Enums\DashboardStatus;
 use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Support\DashboardVersions;
 use App\Domain\Tenancy\Actions\RegisterTenantOwner;
+use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +34,7 @@ final class InstallShowcaseDemo
         private readonly SeedDemoSales $seedDemoSales,
         private readonly DashboardSpecValidator $validator,
         private readonly DashboardVersions $versions,
+        private readonly TenantContext $tenantContext,
     ) {}
 
     /**
@@ -67,29 +69,32 @@ final class InstallShowcaseDemo
 
             $tenant = $user->tenants()->firstOrFail();
 
-            if (! DemoSale::query()->forTenant($tenant)->exists()) {
-                $this->seedDemoSales->execute($tenant);
-            }
+            // A console command has no request, so no tenant in context: work as the new one.
+            return $this->tenantContext->run($tenant, function () use ($tenant, $user, $fixtures, $email): array {
+                if (! DemoSale::query()->forTenant($tenant)->exists()) {
+                    $this->seedDemoSales->execute($tenant);
+                }
 
-            foreach ($fixtures as $fixture) {
-                $spec = $this->validator->validate(DashboardSpec::fromArray($fixture['spec']))->toArray();
+                foreach ($fixtures as $fixture) {
+                    $spec = $this->validator->validate(DashboardSpec::fromArray($fixture['spec']))->toArray();
 
-                $dashboard = $tenant->dashboards()->create([
-                    'created_by' => $user->getKey(),
-                    'title' => $fixture['title'],
-                    'description' => $fixture['description'],
-                    'original_prompt' => $fixture['original_prompt'],
-                    'status' => DashboardStatus::Ready,
-                    'spec_version' => (string) $spec['version'],
-                    'dashboard_spec' => $spec,
-                    'provider' => 'gemini',
-                    'generation_completed_at' => now(),
-                ]);
+                    $dashboard = $tenant->dashboards()->create([
+                        'created_by' => $user->getKey(),
+                        'title' => $fixture['title'],
+                        'description' => $fixture['description'],
+                        'original_prompt' => $fixture['original_prompt'],
+                        'status' => DashboardStatus::Ready,
+                        'spec_version' => (string) $spec['version'],
+                        'dashboard_spec' => $spec,
+                        'provider' => 'gemini',
+                        'generation_completed_at' => now(),
+                    ]);
 
-                $this->versions->ensureInitial($dashboard);
-            }
+                    $this->versions->ensureInitial($dashboard);
+                }
 
-            return ['created' => true, 'email' => $email, 'dashboards' => count($fixtures)];
+                return ['created' => true, 'email' => $email, 'dashboards' => count($fixtures)];
+            });
         });
     }
 

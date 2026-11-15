@@ -94,7 +94,7 @@ class DashboardActionsTest extends TestCase
 
         $this->actingAs($this->owner)
             ->patch(route('dashboards.update', $foreign), ['title' => 'Mío ahora'])
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->assertSame('Ajeno', $foreign->refresh()->title);
     }
@@ -123,7 +123,7 @@ class DashboardActionsTest extends TestCase
         $foreign = Dashboard::factory()->for(Tenant::factory()->create())->create();
 
         $this->actingAs($this->member)->delete(route('dashboards.destroy', $dashboard))->assertForbidden();
-        $this->actingAs($this->owner)->delete(route('dashboards.destroy', $foreign))->assertForbidden();
+        $this->actingAs($this->owner)->delete(route('dashboards.destroy', $foreign))->assertNotFound();
 
         $this->assertModelExists($dashboard);
         $this->assertModelExists($foreign);
@@ -180,7 +180,7 @@ class DashboardActionsTest extends TestCase
         $foreign = Dashboard::factory()->for(Tenant::factory()->create())->create(['status' => DashboardStatus::Ready, 'dashboard_spec' => ['visualizations' => []]]);
 
         $this->actingAs($this->member)->post(route('dashboards.duplicate', $source))->assertForbidden();
-        $this->actingAs($this->owner)->post(route('dashboards.duplicate', $foreign))->assertForbidden();
+        $this->actingAs($this->owner)->post(route('dashboards.duplicate', $foreign))->assertNotFound();
 
         $this->assertDatabaseCount('dashboards', 2);
     }
@@ -224,7 +224,7 @@ class DashboardActionsTest extends TestCase
         $foreign = Dashboard::factory()->for(Tenant::factory()->create())->create();
 
         $this->actingAs($this->owner)->patch(route('dashboards.pin', $dashboard), [])->assertSessionHasErrors('pinned');
-        $this->actingAs($this->owner)->patch(route('dashboards.pin', $foreign), ['pinned' => true])->assertForbidden();
+        $this->actingAs($this->owner)->patch(route('dashboards.pin', $foreign), ['pinned' => true])->assertNotFound();
 
         $this->assertDatabaseCount('dashboard_pins', 0);
     }
@@ -378,7 +378,7 @@ class DashboardActionsTest extends TestCase
         $foreign = Dashboard::factory()->for(Tenant::factory()->create())->create(['status' => DashboardStatus::Failed, 'original_prompt' => 'algo suficientemente largo']);
 
         $this->actingAs($this->member)->post(route('dashboards.retry', $failed))->assertForbidden();
-        $this->actingAs($this->owner)->post(route('dashboards.retry', $foreign))->assertForbidden();
+        $this->actingAs($this->owner)->post(route('dashboards.retry', $foreign))->assertNotFound();
 
         Queue::assertNothingPushed();
         $this->assertSame(DashboardStatus::Failed, $failed->refresh()->status);

@@ -9,6 +9,7 @@ use App\Domain\Ai\Exceptions\UnsupportedDashboardAiDriver;
 use App\Domain\Ai\Validation\DashboardSpecValidator;
 use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
 use App\Domain\Dashboards\Enums\DashboardStatus;
+use App\Domain\Dashboards\Jobs\Concerns\EntersGenerationTenant;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Dashboards\Models\DashboardVersion;
@@ -27,7 +28,7 @@ use Throwable;
 
 final class GenerateDashboardJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EntersGenerationTenant, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
 
@@ -38,6 +39,11 @@ final class GenerateDashboardJob implements ShouldQueue
     public function handle(DashboardGenerator $generator, DashboardSpecValidator $validator): void
     {
         ExecutionTime::allow($this->timeout + 30);
+
+        // A job has no request: enter the generation's own tenant before touching data.
+        if (! $this->enterGenerationTenant()) {
+            return;
+        }
 
         try {
             $generation = $this->beginProcessing(

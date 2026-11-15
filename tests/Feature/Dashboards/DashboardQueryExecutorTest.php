@@ -9,6 +9,7 @@ use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Queries\DashboardQueryExecutor;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Domain\Tenancy\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use LogicException;
@@ -272,7 +273,11 @@ class DashboardQueryExecutorTest extends TestCase
      */
     private function sale(array $attributes = [], ?Tenant $tenant = null): DemoSale
     {
-        return DemoSale::factory()->for($tenant ?? $this->tenant)->create($attributes);
+        $owner = $tenant ?? $this->tenant;
+
+        // Another organization's rows are created *as* that organization: while one
+        // tenant is in context, creating a record for a different one is refused.
+        return app(TenantContext::class)->run($owner, fn (): DemoSale => DemoSale::factory()->for($owner)->create($attributes));
     }
 
     /**

@@ -24,6 +24,11 @@
   `ResolveCurrentTenant`.
 - Toda query de recursos de negocio debe quedar restringida al tenant actual.
   Añadir una prueba positiva y otra cross-tenant por cada recurso nuevo.
+- Todo modelo con `tenant_id` usa el trait `BelongsToTenant` (filtro global que
+  falla cerrado; una prueba lo exige). Los jobs y comandos sin petición entran a
+  una organización con `TenantContext`; `withoutTenantScope()` es una excepción
+  explícita y justificada, nunca el camino normal.
+- Un recurso de otra organización responde 404, no 403.
 - No ejecutar SQL generado por usuarios o IA. No interpolar identificadores o
   valores en SQL dinámico.
 
