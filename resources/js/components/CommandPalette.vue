@@ -5,7 +5,20 @@ import { useCommandPalette } from '@/composables/useCommandPalette';
 import { createDashboardFrom } from '@/composables/useDashboardPrompt';
 import type { DashboardSummary, SharedData } from '@/types';
 import { router, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, LoaderCircle, Monitor, Moon, Plus, Search, Settings, Sparkles, Sun, WandSparkles, type LucideIcon } from 'lucide-vue-next';
+import {
+    Database,
+    LayoutGrid,
+    LoaderCircle,
+    Monitor,
+    Moon,
+    Plus,
+    Search,
+    Settings,
+    Sparkles,
+    Sun,
+    WandSparkles,
+    type LucideIcon,
+} from 'lucide-vue-next';
 import { DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'radix-vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -44,6 +57,8 @@ const actions = computed<Entry[]>(() => {
         { id: 'a-new', group: 'Acciones', label: 'Nueva pregunta', icon: Plus, run: go(route('dashboards.create')) },
         { id: 'a-home', group: 'Acciones', label: 'Ir a Inicio', icon: Sparkles, run: go(route('dashboard')) },
         { id: 'a-dashboards', group: 'Acciones', label: 'Ir a Dashboards', icon: LayoutGrid, run: go(route('dashboards.index')) },
+        { id: 'a-data', group: 'Acciones', label: 'Ir a Datos', icon: Database, run: go(route('datasets.index')) },
+        { id: 'a-upload', group: 'Acciones', label: 'Subir un archivo de datos', icon: Database, run: go(route('datasets.index')) },
         { id: 'a-settings', group: 'Acciones', label: 'Configuración', icon: Settings, run: go(route('profile.edit')) },
         { id: 'a-light', group: 'Acciones', label: 'Tema claro', icon: Sun, run: () => setTheme('light') },
         { id: 'a-dark', group: 'Acciones', label: 'Tema oscuro', icon: Moon, run: () => setTheme('dark') },

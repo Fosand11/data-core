@@ -4,7 +4,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
 import { MAX_PROMPT_LENGTH, useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { BreadcrumbItem, CurrentTenant, DashboardSummary, SharedData, TenantOption } from '@/types';
+import type { BreadcrumbItem, CurrentTenant, DashboardSummary, DatasetChoice, SharedData, TenantOption } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { ArrowUp, Building2, Database, LoaderCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
@@ -13,6 +13,7 @@ defineProps<{
     currentTenant: CurrentTenant | null;
     tenants: TenantOption[];
     dashboards: DashboardSummary[];
+    datasets: DatasetChoice[];
 }>();
 
 const page = usePage<SharedData>();
@@ -34,6 +35,14 @@ const today = computed(() => {
 // Enter here creates the dashboard directly: no second screen, no second Enter.
 const { form, canSubmit, submit, handleKeydown } = useDashboardPrompt();
 const promptInput = ref<HTMLTextAreaElement | null>(null);
+
+// What to ask about: an uploaded dataset, or the demo data (an empty value) when none.
+const datasetValue = computed({
+    get: () => form.dataset_id ?? '',
+    set: (value: string) => {
+        form.dataset_id = value === '' ? null : value;
+    },
+});
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Inicio', href: '/dashboard' }];
 const suggestions = ['Ventas por región', 'Ingresos de los últimos meses', 'Productos con menor rendimiento', 'Rendimiento del equipo comercial'];
@@ -85,7 +94,20 @@ onMounted(() => {
                             @keydown="handleKeydown"
                         />
                         <div class="flex items-center justify-between gap-3 px-3 pb-2 pt-1">
-                            <span class="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                            <label v-if="datasets.length" class="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                                <Database class="size-3.5 shrink-0" aria-hidden="true" />
+                                <span class="sr-only">Datos sobre los que preguntar</span>
+                                <select
+                                    v-model="datasetValue"
+                                    class="min-w-0 max-w-[15rem] truncate rounded-md border-0 bg-transparent py-1 pl-0 pr-7 text-xs text-muted-foreground focus:ring-1 focus:ring-ring sm:max-w-[22rem]"
+                                >
+                                    <option value="">Datos de ejemplo · ventas de 12 meses</option>
+                                    <option v-for="dataset in datasets" :key="dataset.id" :value="dataset.id">
+                                        {{ dataset.name }} · {{ dataset.row_count.toLocaleString('es') }} filas
+                                    </option>
+                                </select>
+                            </label>
+                            <span v-else class="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                                 <Database class="size-3.5 shrink-0" aria-hidden="true" />
                                 <span class="truncate">Datos de ejemplo · ventas de 12 meses</span>
                             </span>

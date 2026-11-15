@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavItem, SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutGrid, Plus, Settings, Sparkles } from 'lucide-vue-next';
+import { Database, LayoutGrid, Plus, Settings, Sparkles } from 'lucide-vue-next';
 
 const page = usePage<SharedData>();
 const { state } = useSidebar();
@@ -24,6 +24,7 @@ const { state } = useSidebar();
 const mainNavItems: NavItem[] = [
     { title: 'Inicio', href: '/dashboard', icon: Sparkles },
     { title: 'Dashboards', href: '/dashboards', icon: LayoutGrid },
+    { title: 'Datos', href: '/datasets', icon: Database },
     { title: 'Configuración', href: '/settings/profile', icon: Settings },
 ];
 </script>

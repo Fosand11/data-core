@@ -11,8 +11,9 @@ export const MAX_PROMPT_LENGTH = 2000;
  * pregunta" and the command palette behave the same: Enter creates it right there,
  * with no intermediate screen that asks for a second Enter.
  */
-export function useDashboardPrompt(initialPrompt = '') {
-    const form = useForm({ prompt: initialPrompt });
+export function useDashboardPrompt(initialPrompt = '', initialDatasetId: string | null = null) {
+    // dataset_id null means the built-in demo data.
+    const form = useForm<{ prompt: string; dataset_id: string | null }>({ prompt: initialPrompt, dataset_id: initialDatasetId });
 
     const canSubmit = computed(() => !form.processing && form.prompt.trim().length >= MIN_PROMPT_LENGTH);
 
@@ -37,14 +38,14 @@ export function useDashboardPrompt(initialPrompt = '') {
  * For callers that have no form of their own (the command palette): creates the
  * dashboard and says so, since the palette closes as soon as it is chosen.
  */
-export function createDashboardFrom(prompt: string): void {
+export function createDashboardFrom(prompt: string, datasetId: string | null = null): void {
     const text = prompt.trim();
 
     if (text.length < MIN_PROMPT_LENGTH) return;
 
     router.post(
         route('dashboards.store'),
-        { prompt: text },
+        { prompt: text, dataset_id: datasetId },
         {
             onStart: () => showToast('Diseñando tu dashboard…', 8000),
             onError: (errors) => showToast(errors.prompt ?? 'No se pudo crear el dashboard. Inténtalo de nuevo.', 6000),

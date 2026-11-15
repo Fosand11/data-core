@@ -54,7 +54,7 @@ async function downloadImage() {
         const framed = await composeImage(chart, {
             title: props.visualization.title,
             subtitle: subtitle.value,
-            footer: 'InsightFlow · Datos de ejemplo',
+            footer: `InsightFlow · ${props.exportContext?.datasetName ?? 'Datos de ejemplo'}`,
         });
         const filename = exportFilename(fileParts.value, 'png');
 

@@ -52,7 +52,7 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
             { line: { x: 0.5, y: 6.95, w: 12.33, h: 0, line: { color: BORDER, width: 0.75 } } },
             {
                 text: {
-                    text: 'InsightFlow · Datos de ejemplo',
+                    text: `InsightFlow · ${context.datasetName ?? 'Datos de ejemplo'}`,
                     options: { x: 0.5, y: 7.02, w: 6, h: 0.3, fontFace: FONT, fontSize: 10, color: MUTED },
                 },
             },
@@ -69,7 +69,7 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
     if (context.description) {
         cover.addText(context.description, { x: 0.8, y: 3.7, w: 11.0, h: 1.0, fontFace: FONT, fontSize: 18, color: 'B7C7BE', valign: 'top' });
     }
-    cover.addText([{ text: context.periodLabel }, { text: `  ·  ${generated}  ·  Datos de ejemplo` }], {
+    cover.addText([{ text: context.periodLabel }, { text: `  ·  ${generated}  ·  ${context.datasetName ?? 'Datos de ejemplo'}` }], {
         x: 0.8,
         y: 5.3,
         w: 11.7,
