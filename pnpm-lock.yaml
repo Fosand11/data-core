@@ -120,8 +120,8 @@ importers:
         specifier: ^4.3.0
         version: 4.3.0(prettier@3.10.1)(typescript@5.9.3)(vue-tsc@2.2.12(typescript@5.9.3))
       prettier-plugin-tailwindcss:
-        specifier: ^0.6.14
-        version: 0.6.14(prettier-plugin-organize-imports@4.3.0(prettier@3.10.1)(typescript@5.9.3)(vue-tsc@2.2.12(typescript@5.9.3)))(prettier@3.10.1)
+        specifier: ^0.8.1
+        version: 0.8.1(prettier-plugin-organize-imports@4.3.0(prettier@3.10.1)(typescript@5.9.3)(vue-tsc@2.2.12(typescript@5.9.3)))(prettier@3.10.1)
       typescript-eslint:
         specifier: ^8.72.2
         version: 8.72.2(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
@@ -130,8 +130,8 @@ importers:
         version: 4.1.12(@types/node@22.20.5)(vite@6.4.6(@types/node@22.20.5)(jiti@1.21.7))
     optionalDependencies:
       '@rollup/rollup-linux-x64-gnu':
-        specifier: 4.9.5
-        version: 4.9.5
+        specifier: 4.68.2
+        version: 4.68.2
       '@tailwindcss/oxide-linux-x64-gnu':
         specifier: ^4.3.5
         version: 4.3.5
@@ -531,11 +531,6 @@ packages:
 
   '@rollup/rollup-linux-x64-gnu@4.68.2':
     resolution: {integrity: sha512-3Btp4Lca/WzsmbaKu9Lh9d/XwyRDIegd/5khRBusHGw/Ll6SoF5Shn63OrjPdkLcpNi2PGDApXzNmxriRxGYjA==}
-    cpu: [x64]
-    os: [linux]
-
-  '@rollup/rollup-linux-x64-gnu@4.9.5':
-    resolution: {integrity: sha512-Dq1bqBdLaZ1Gb/l2e5/+o3B18+8TI9ANlA1SkejZqDgdU/jK/ThYaMPMJpVMMXy2uRHvGKbkz9vheVGdq3cJfA==}
     cpu: [x64]
     os: [linux]
 
@@ -1599,9 +1594,9 @@ packages:
       vue-tsc:
         optional: true
 
-  prettier-plugin-tailwindcss@0.6.14:
-    resolution: {integrity: sha512-pi2e/+ZygeIqntN+vC573BcW5Cve8zUB0SSAGxqpB4f96boZF4M3phPVoOFCeypwkpRYdi7+jQ5YJJUwrkGUAg==}
-    engines: {node: '>=14.21.3'}
+  prettier-plugin-tailwindcss@0.8.1:
+    resolution: {integrity: sha512-iaFMYqDsE4ffdDkn5qup0j5f2aCEBFZrdrZnvu9QKTlWx/iGPeQ4HHu7b7fCPMxeo9nwQBiOAh2nSypdFYWJkw==}
+    engines: {node: '>=20.19'}
     peerDependencies:
       '@ianvs/prettier-plugin-sort-imports': '*'
       '@prettier/plugin-hermes': '*'
@@ -1613,14 +1608,12 @@ packages:
       prettier: ^3.0
       prettier-plugin-astro: '*'
       prettier-plugin-css-order: '*'
-      prettier-plugin-import-sort: '*'
       prettier-plugin-jsdoc: '*'
       prettier-plugin-marko: '*'
       prettier-plugin-multiline-arrays: '*'
       prettier-plugin-organize-attributes: '*'
       prettier-plugin-organize-imports: '*'
       prettier-plugin-sort-imports: '*'
-      prettier-plugin-style-order: '*'
       prettier-plugin-svelte: '*'
     peerDependenciesMeta:
       '@ianvs/prettier-plugin-sort-imports':
@@ -1641,8 +1634,6 @@ packages:
         optional: true
       prettier-plugin-css-order:
         optional: true
-      prettier-plugin-import-sort:
-        optional: true
       prettier-plugin-jsdoc:
         optional: true
       prettier-plugin-marko:
@@ -1654,8 +1645,6 @@ packages:
       prettier-plugin-organize-imports:
         optional: true
       prettier-plugin-sort-imports:
-        optional: true
-      prettier-plugin-style-order:
         optional: true
       prettier-plugin-svelte:
         optional: true
@@ -2378,9 +2367,6 @@ snapshots:
     optional: true
 
   '@rollup/rollup-linux-x64-gnu@4.68.2':
-    optional: true
-
-  '@rollup/rollup-linux-x64-gnu@4.9.5':
     optional: true
 
   '@rollup/rollup-linux-x64-musl@4.68.2':
@@ -3486,7 +3472,7 @@ snapshots:
     optionalDependencies:
       vue-tsc: 2.2.12(typescript@5.9.3)
 
-  prettier-plugin-tailwindcss@0.6.14(prettier-plugin-organize-imports@4.3.0(prettier@3.10.1)(typescript@5.9.3)(vue-tsc@2.2.12(typescript@5.9.3)))(prettier@3.10.1):
+  prettier-plugin-tailwindcss@0.8.1(prettier-plugin-organize-imports@4.3.0(prettier@3.10.1)(typescript@5.9.3)(vue-tsc@2.2.12(typescript@5.9.3)))(prettier@3.10.1):
     dependencies:
       prettier: 3.10.1
     optionalDependencies:
