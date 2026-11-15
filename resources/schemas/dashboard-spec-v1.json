@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://insightflow.local/schemas/dashboard-spec-v1.json",
-    "title": "InsightFlow DashboardSpec",
+    "$id": "https://atisbo.local/schemas/dashboard-spec-v1.json",
+    "title": "Atisbo DashboardSpec",
     "description": "Contrato neutral y estructurado. No admite SQL ni consultas arbitrarias.",
     "type": "object",
     "additionalProperties": false,

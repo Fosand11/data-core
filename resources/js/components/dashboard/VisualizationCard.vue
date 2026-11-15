@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { lightThemeFor } from '@/composables/useChartTheme';
 import { registerPrintPreparer } from '@/composables/usePrint';
 import { showToast } from '@/composables/useToast';
+import { appName } from '@/lib/brand';
 import { SINGLE_COLOR_TYPES, hasPartialPeriod } from '@/lib/chartOptions';
 import { composeImage, downloadBlob, downloadUrl, exportFilename, toCsv } from '@/lib/export';
 import { describeFilter } from '@/lib/labels';
@@ -71,7 +72,7 @@ async function downloadImage() {
         const framed = await composeImage(chart, {
             title: props.visualization.title,
             subtitle: subtitle.value,
-            footer: `InsightFlow · ${props.exportContext?.datasetName ?? 'Datos de ejemplo'}`,
+            footer: `${appName()} · ${props.exportContext?.datasetName ?? 'Datos de ejemplo'}`,
         });
         const filename = exportFilename(fileParts.value, 'png');
 

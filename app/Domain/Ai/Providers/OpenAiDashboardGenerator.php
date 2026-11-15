@@ -140,8 +140,8 @@ final readonly class OpenAiDashboardGenerator implements DashboardGenerator, Mod
             'text' => [
                 'format' => [
                     'type' => 'json_schema',
-                    'name' => 'insightflow_dashboard_spec_v1',
-                    'description' => 'A validated InsightFlow DashboardSpec version 1.0.',
+                    'name' => 'dashboard_spec',
+                    'description' => 'A validated DashboardSpec.',
                     'strict' => true,
                     'schema' => $this->schema->forStructuredOutputs(),
                 ],

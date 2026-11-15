@@ -4,7 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ config('app.name') }}</title>
+        <meta name="application-name" content="{{ config('app.name') }}">
 
         <meta name="description" content="Dashboards con lenguaje natural: describe lo que quieres entender y la IA diseña el dashboard, lo valida y calcula los números en tu propio servidor.">
         <meta name="theme-color" content="#1F6B51">
@@ -15,8 +16,8 @@
 
         {{-- Link preview (LinkedIn, chat apps, social networks). --}}
         <meta property="og:type" content="website">
-        <meta property="og:site_name" content="InsightFlow">
-        <meta property="og:title" content="InsightFlow · Pregúntale a tus datos">
+        <meta property="og:site_name" content="{{ config('app.name') }}">
+        <meta property="og:title" content="{{ config('app.name') }} · Pregúntale a tus datos">
         <meta property="og:description" content="Describe lo que quieres entender y la IA diseña el dashboard. Se valida y se calcula en tu propio servidor.">
         <meta property="og:image" content="{{ asset('og-image.png') }}">
         <meta property="og:image:width" content="1200">

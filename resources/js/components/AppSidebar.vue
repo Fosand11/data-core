@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { appName } from '@/lib/brand';
 import type { NavItem, SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Database, LayoutGrid, Plus, Settings, Sparkles } from 'lucide-vue-next';
@@ -35,7 +36,7 @@ const mainNavItems: NavItem[] = [
             <Link
                 :href="route('dashboard')"
                 class="flex items-center rounded-lg px-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label="InsightFlow, ir al inicio"
+                :aria-label="`${appName()}, ir al inicio`"
             >
                 <AppLogo :compact="state === 'collapsed'" />
             </Link>
