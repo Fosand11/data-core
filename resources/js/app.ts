@@ -1,4 +1,6 @@
 import { appName } from '@/lib/brand';
+// The typeface is served by this app, not by a third party: a font CDN would receive every visitor's IP address.
+import '@fontsource-variable/inter/wght.css';
 import '../css/app.css';
 
 import { createInertiaApp, router } from '@inertiajs/vue3';

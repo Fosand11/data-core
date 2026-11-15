@@ -24,10 +24,7 @@
         <meta property="og:image:height" content="630">
         <meta name="twitter:card" content="summary_large_image">
 
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700" rel="stylesheet" />
-
-        @routes
+        @routes(nonce: \Illuminate\Support\Facades\Vite::cspNonce())
         @vite(['resources/js/app.ts'])
         @inertiaHead
     </head>
