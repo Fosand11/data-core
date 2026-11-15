@@ -2,19 +2,34 @@
 import { visualizationIcons } from '@/lib/visualizationIcons';
 import type { AssistantReply } from '@/types';
 import { Info, Lightbulb, Sparkles, X } from 'lucide-vue-next';
+import { nextTick, onMounted, ref, watch } from 'vue';
 
-defineProps<{ reply: AssistantReply }>();
+const props = defineProps<{ reply: AssistantReply }>();
 
 const emit = defineEmits<{
     /** A suggestion or an example was chosen: the caller puts it in its text box. */
     use: [text: string];
     close: [];
 }>();
+
+// The answer opens below the text box; bring it into view so it is never left out of sight.
+const root = ref<HTMLElement | null>(null);
+const bringIntoView = async () => {
+    await nextTick();
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    root.value?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+};
+
+onMounted(bringIntoView);
+watch(() => props.reply, bringIntoView);
 </script>
 
 <template>
     <section
-        class="mt-5 rounded-2xl border border-primary/20 bg-card p-5 shadow-card"
+        ref="root"
+        class="motion-reveal mt-5 scroll-mb-6 rounded-2xl border border-primary/20 bg-card p-5 shadow-card"
         :aria-label="reply.title"
         aria-live="polite"
         data-testid="assistant-reply"
@@ -26,7 +41,10 @@ const emit = defineEmits<{
                 </span>
                 <div class="min-w-0">
                     <h2 class="text-base font-semibold tracking-tight text-foreground">{{ reply.title }}</h2>
-                    <p class="mt-1 text-sm leading-6 text-muted-foreground">{{ reply.message }}</p>
+                    <p class="mt-1 whitespace-pre-line text-sm leading-6 text-muted-foreground">{{ reply.message }}</p>
+                    <p v-if="reply.generated" class="mt-2 text-xs text-muted-foreground/80">
+                        Respuesta generada por IA a partir de la documentación del producto; puede equivocarse.
+                    </p>
                 </div>
             </div>
             <button

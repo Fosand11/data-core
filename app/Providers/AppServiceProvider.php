@@ -2,12 +2,17 @@
 
 namespace App\Providers;
 
+use App\Domain\Ai\Assistant\HelpInstructions;
 use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Contracts\HelpResponder;
 use App\Domain\Ai\Prompts\DashboardGenerationInstructions;
 use App\Domain\Ai\Providers\FakeDashboardGenerator;
+use App\Domain\Ai\Providers\FakeHelpResponder;
 use App\Domain\Ai\Providers\GeminiDashboardGenerator;
+use App\Domain\Ai\Providers\GeminiHelpResponder;
 use App\Domain\Ai\Providers\OpenAiDashboardGenerator;
 use App\Domain\Ai\Providers\UnsupportedDashboardGenerator;
+use App\Domain\Ai\Providers\UnsupportedHelpResponder;
 use App\Domain\Ai\Schemas\DashboardSpecSchema;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\Dataset;
@@ -55,6 +60,24 @@ class AppServiceProvider extends ServiceProvider
                     instructions: $this->app->make(DashboardGenerationInstructions::class),
                 ),
                 default => new UnsupportedDashboardGenerator,
+            };
+        });
+
+        // Help answers follow the same driver; anything without a help implementation falls back to fixed content.
+        $this->app->bind(HelpResponder::class, function (): HelpResponder {
+            $driver = config('dashboard-ai.driver');
+
+            return match (is_string($driver) ? strtolower(trim($driver)) : '') {
+                'fake' => new FakeHelpResponder,
+                'gemini' => new GeminiHelpResponder(
+                    apiKey: (string) config('dashboard-ai.gemini.api_key', ''),
+                    model: (string) (config('dashboard-ai.help.model') ?: config('dashboard-ai.gemini.model', '')),
+                    timeout: (int) config('dashboard-ai.help.timeout', 12),
+                    maxRetries: 1,
+                    maxOutputTokens: (int) config('dashboard-ai.help.max_output_tokens', 1024),
+                    instructions: $this->app->make(HelpInstructions::class),
+                ),
+                default => new UnsupportedHelpResponder,
             };
         });
     }

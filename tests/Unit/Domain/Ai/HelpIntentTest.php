@@ -32,6 +32,19 @@ class HelpIntentTest extends TestCase
             'overview, help' => ['ayuda', HelpIntent::Overview],
             'overview, how it works' => ['¿Cómo funciona?', HelpIntent::Overview],
             'accents and capitals do not matter' => ['¿QUÉ VISUALES TIENES?', HelpIntent::Visuals],
+            // The wording that slipped through before.
+            'visuals, singular "tipo"' => ['Que tipo de graficos puedo hacer?', HelpIntent::Visuals],
+            'visuals, which charts can I make' => ['¿Qué gráficos puedo hacer?', HelpIntent::Visuals],
+            'visuals, which kinds of charts' => ['¿Qué clase de gráficas tienes?', HelpIntent::Visuals],
+            'visuals, can you make a pie' => ['¿Puedes hacer gráficos de pastel?', HelpIntent::Visuals],
+            'visuals, with my data' => ['que graficos puedo hacer con mis datos', HelpIntent::Visuals],
+            'visuals, which do you handle' => ['cuáles gráficas manejas', HelpIntent::Visuals],
+            'visuals, are there' => ['hay más tipos de gráficos?', HelpIntent::Visuals],
+            'limits, can I make a map' => ['¿Se puede hacer un mapa?', HelpIntent::Limits],
+            'limits, do you have maps' => ['tienes mapas geográficos', HelpIntent::Limits],
+            'suggestions, which questions' => ['¿Qué preguntas puedo hacer?', HelpIntent::Suggestions],
+            'suggestions, examples' => ['dame ejemplos de preguntas', HelpIntent::Suggestions],
+            'overview, which kind of things' => ['¿Qué tipo de cosas puedo hacer?', HelpIntent::Overview],
         ];
     }
 
@@ -53,6 +66,11 @@ class HelpIntentTest extends TestCase
             'the word ideas inside a request' => ['Reparto de ideas aprobadas por equipo en un gráfico circular'],
             'a change request' => ['Cambia las barras por un gráfico circular'],
             'asks for a specific chart with a metric' => ['Muestra las ventas en barras horizontales por producto'],
+            'a question about the data, not the app' => ['¿Cuántos pedidos hay?'],
+            'a chart request phrased as a question, with a slice' => ['¿Qué gráficos de ventas hay por región?'],
+            'asks to see sales by region in charts' => ['¿Puedo ver las ventas por región en gráficos?'],
+            'a chart named without any question' => ['Gráficos de barras de las ventas'],
+            'a map request with a slice' => ['Mapa de ventas por país'],
             'empty' => ['   '],
             'a long help-looking sentence is an analytics request' => [str_repeat('qué puedo hacer con las ventas por región y por producto ', 3)],
         ];

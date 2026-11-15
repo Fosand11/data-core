@@ -82,5 +82,12 @@ services:
         value: "10"
       - key: DASHBOARD_AI_GLOBAL_PER_DAY
         value: "60"
+      # Help answers share the same free quota, so they get their own small allowance.
+      - key: DASHBOARD_AI_HELP_ENABLED
+        value: "true"
+      - key: DASHBOARD_AI_HELP_PER_HOUR
+        value: "8"
+      - key: DASHBOARD_AI_HELP_GLOBAL_PER_DAY
+        value: "100"
       - key: TENANCY_SEED_DEMO_DATA
         value: "true"

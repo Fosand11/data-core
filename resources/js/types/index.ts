@@ -284,7 +284,7 @@ export interface AssistantVisual {
 
 /** The assistant's answer to a question about the app itself ("¿qué visuales tienes?"). */
 export interface AssistantReply {
-    kind: 'overview' | 'visuals' | 'suggestions' | 'limits';
+    kind: 'overview' | 'visuals' | 'suggestions' | 'limits' | 'answer';
     title: string;
     message: string;
     /** The dataset the answer is about; null for the demo data or a dashboard-wide answer. */
@@ -293,6 +293,8 @@ export interface AssistantReply {
     suggestions: string[];
     tips: string[] | null;
     limits: string[] | null;
+    /** True when the model wrote the message (it can be wrong); false for fixed content. */
+    generated?: boolean;
 }
 
 export interface DatasetLimits {

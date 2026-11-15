@@ -24,12 +24,13 @@ final class HelpAssistant
      *     visuals: list<array{type: string, name: string, description: string, example: string, available: bool, note: string|null}>|null,
      *     suggestions: list<string>,
      *     tips: list<string>|null,
-     *     limits: list<string>|null
+     *     limits: list<string>|null,
+     *     generated: bool
      * }
      */
     public function reply(HelpIntent $intent, ?DatasetCatalog $catalog, ?string $datasetName = null, bool $refinement = false): array
     {
-        $base = ['kind' => $intent->value, 'dataset' => $datasetName, 'visuals' => null, 'suggestions' => [], 'tips' => null, 'limits' => null];
+        $base = ['kind' => $intent->value, 'dataset' => $datasetName, 'visuals' => null, 'suggestions' => [], 'tips' => null, 'limits' => null, 'generated' => false];
         $changes = $refinement ? $this->suggester->changes() : null;
 
         return match ($intent) {
@@ -39,7 +40,7 @@ final class HelpAssistant
                 'message' => $refinement
                     ? 'Estos son los tipos de visual. Puedes pedir que cambie cualquier gráfica de este dashboard por otro.'
                     : 'Estos son los tipos de visual que puedo dibujar. Elijo el que mejor responde a tu pregunta, o puedes pedir uno en concreto.',
-                'visuals' => $this->visuals($catalog),
+                'visuals' => $this->visualList($catalog),
                 'suggestions' => $changes ?? $this->suggester->suggest($catalog, 3),
             ],
             HelpIntent::Suggestions => [
@@ -56,7 +57,7 @@ final class HelpAssistant
                 ...$base,
                 'title' => 'Lo que no hago (todavía)',
                 'message' => 'Para que sepas qué esperar de la herramienta:',
-                'limits' => $this->limits(),
+                'limits' => $this->limitList(),
                 'suggestions' => $changes !== null ? [] : $this->suggester->suggest($catalog, 3),
             ],
             HelpIntent::Overview => [
@@ -78,9 +79,44 @@ final class HelpAssistant
     }
 
     /**
+     * A model's answer to a question the fixed rules did not recognise, with ideas to continue.
+     *
+     * @return array<string, mixed>
+     */
+    public function answer(string $text, ?DatasetCatalog $catalog, ?string $datasetName = null, bool $refinement = false): array
+    {
+        return [
+            'kind' => 'answer',
+            'title' => 'Respuesta',
+            'message' => $text,
+            'dataset' => $datasetName,
+            'visuals' => null,
+            'suggestions' => $refinement ? $this->suggester->changes(3) : $this->suggester->suggest($catalog, 3),
+            'tips' => null,
+            'limits' => null,
+            'generated' => true,
+        ];
+    }
+
+    /**
+     * When a question could not be answered (the model is off, out of budget or failed): say so
+     * and show what can be done, instead of guessing or designing a dashboard from a question.
+     *
+     * @return array<string, mixed>
+     */
+    public function unsure(?DatasetCatalog $catalog, ?string $datasetName = null, bool $refinement = false): array
+    {
+        return [
+            ...$this->reply(HelpIntent::Overview, $catalog, $datasetName, $refinement),
+            'title' => 'No estoy seguro de haberte entendido',
+            'message' => 'No pude responder esa pregunta ahora mismo. Si quieres un dashboard, describe qué quieres medir y cómo verlo («ventas por región»). Esto es lo que puedo hacer:',
+        ];
+    }
+
+    /**
      * @return list<array{type: string, name: string, description: string, example: string, available: bool, note: string|null}>
      */
-    private function visuals(?DatasetCatalog $catalog): array
+    public function visualList(?DatasetCatalog $catalog): array
     {
         $isDemo = $catalog === null || $catalog->dataset() === DemoSalesDatasetCatalog::DATASET;
         $hasText = $isDemo || ColumnRoles::byUsefulness($catalog, 'string') !== [];
@@ -165,7 +201,7 @@ final class HelpAssistant
     /**
      * @return list<string>
      */
-    private function limits(): array
+    public function limitList(): array
     {
         $maxMb = round((int) config('datasets.max_file_kb') / 1024, 1);
 
