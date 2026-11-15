@@ -210,7 +210,7 @@ export interface SharedData extends Record<string, unknown> {
     auth: Auth;
     recentDashboards: RecentDashboard[];
     pinnedDashboards: RecentDashboard[];
-    flash: { status: string | null };
+    flash: { status: string | null; assistant: AssistantReply | null };
     ziggy: {
         location: string;
         url: string;
@@ -268,6 +268,31 @@ export interface DatasetChoice {
     id: string;
     name: string;
     row_count: number;
+    /** Questions worth asking about it, built from its column names. */
+    suggestions: string[];
+}
+
+/** One visual type in the assistant's list, with an example and whether the current data can draw it. */
+export interface AssistantVisual {
+    type: DashboardVisualizationType;
+    name: string;
+    description: string;
+    example: string;
+    available: boolean;
+    note: string | null;
+}
+
+/** The assistant's answer to a question about the app itself ("¿qué visuales tienes?"). */
+export interface AssistantReply {
+    kind: 'overview' | 'visuals' | 'suggestions' | 'limits';
+    title: string;
+    message: string;
+    /** The dataset the answer is about; null for the demo data or a dashboard-wide answer. */
+    dataset: string | null;
+    visuals: AssistantVisual[] | null;
+    suggestions: string[];
+    tips: string[] | null;
+    limits: string[] | null;
 }
 
 export interface DatasetLimits {

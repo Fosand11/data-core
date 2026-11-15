@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import AssistantReply from '@/components/AssistantReply.vue';
 import InputError from '@/components/InputError.vue';
+import { askAssistant, useAssistantReply } from '@/composables/useAssistant';
 import { useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, DatasetChoice, TenantOption } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { ArrowUp, Database, LoaderCircle, ShieldCheck } from 'lucide-vue-next';
+import { ArrowUp, CircleHelp, Database, LoaderCircle, ShieldCheck } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -23,7 +25,7 @@ const promptInput = ref<HTMLTextAreaElement | null>(null);
 const providerNames: Record<string, string> = { gemini: 'Gemini', openai: 'OpenAI', fake: 'Simulador local' };
 const providerLabel = computed(() => providerNames[props.provider] ?? props.provider);
 const isExternalProvider = computed(() => props.provider === 'gemini' || props.provider === 'openai');
-const suggestions = [
+const demoSuggestions = [
     'Muéstrame las ventas por región del último trimestre.',
     'Comparar ingresos con el periodo anterior.',
     'Identifica productos con ventas disminuidas.',
@@ -32,6 +34,11 @@ const suggestions = [
 
 // What the user is asking about: an uploaded dataset, or the demo data when none.
 const selectedDataset = computed(() => props.datasets.find((dataset) => dataset.id === form.dataset_id) ?? null);
+// The ideas follow the data: an uploaded file offers questions built from its own columns.
+const suggestions = computed(() => selectedDataset.value?.suggestions ?? demoSuggestions);
+
+const { reply, dismiss } = useAssistantReply();
+const askForHelp = () => askAssistant('¿Qué puedo hacer?', form.dataset_id);
 
 const fields = ['Monto', 'Región', 'Fecha', 'Producto', 'Cantidad', 'Vendedor', 'Equipo'];
 
@@ -134,7 +141,16 @@ onMounted(() => {
                         Diseñando tu dashboard… puede tardar unos segundos.
                     </p>
 
-                    <p class="mt-6 px-1 text-sm font-medium text-foreground">Ideas para empezar</p>
+                    <div class="mt-6 flex items-center justify-between gap-3 px-1">
+                        <p class="text-sm font-medium text-foreground">Ideas para empezar</p>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-full text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            @click="askForHelp"
+                        >
+                            <CircleHelp class="size-4" aria-hidden="true" /> ¿Qué puedo hacer?
+                        </button>
+                    </div>
                     <div class="mt-3 grid gap-2 sm:grid-cols-2">
                         <button
                             v-for="suggestion in suggestions"
@@ -146,6 +162,8 @@ onMounted(() => {
                             {{ suggestion }}
                         </button>
                     </div>
+
+                    <AssistantReply v-if="reply" :reply="reply" @use="selectSuggestion" @close="dismiss" />
                 </section>
 
                 <aside class="motion-reveal-late space-y-4" aria-label="Datos disponibles">

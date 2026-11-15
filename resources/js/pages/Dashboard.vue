@@ -1,15 +1,17 @@
 <script setup lang="ts">
+import AssistantReply from '@/components/AssistantReply.vue';
 import DashboardCard from '@/components/DashboardCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
+import { askAssistant, useAssistantReply } from '@/composables/useAssistant';
 import { MAX_PROMPT_LENGTH, useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem, CurrentTenant, DashboardSummary, DatasetChoice, SharedData, TenantOption } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { ArrowUp, Building2, Database, LoaderCircle } from 'lucide-vue-next';
+import { ArrowUp, Building2, CircleHelp, Database, LoaderCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     currentTenant: CurrentTenant | null;
     tenants: TenantOption[];
     dashboards: DashboardSummary[];
@@ -45,7 +47,12 @@ const datasetValue = computed({
 });
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Inicio', href: '/dashboard' }];
-const suggestions = ['Ventas por región', 'Ingresos de los últimos meses', 'Productos con menor rendimiento', 'Rendimiento del equipo comercial'];
+const demoSuggestions = ['Ventas por región', 'Ingresos de los últimos meses', 'Productos con menor rendimiento', 'Rendimiento del equipo comercial'];
+// The questions follow the data being asked about: an uploaded file offers ones built from its own columns.
+const suggestions = computed(() => props.datasets.find((dataset) => dataset.id === form.dataset_id)?.suggestions ?? demoSuggestions);
+
+const { reply, dismiss } = useAssistantReply();
+const askForHelp = () => askAssistant('¿Qué puedo hacer?', form.dataset_id);
 
 // A suggestion fills the box (so it can be tweaked) and leaves the cursor in it.
 const selectSuggestion = (suggestion: string) => {
@@ -138,7 +145,16 @@ onMounted(() => {
                         >
                             {{ suggestion }}
                         </button>
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-full border border-dashed bg-card px-3.5 py-1.5 text-sm text-primary transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            @click="askForHelp"
+                        >
+                            <CircleHelp class="size-4" aria-hidden="true" /> ¿Qué puedo hacer?
+                        </button>
                     </div>
+
+                    <AssistantReply v-if="reply" :reply="reply" @use="selectSuggestion" @close="dismiss" />
                 </section>
 
                 <section v-if="dashboards.length" class="motion-reveal-late mt-14" aria-labelledby="recent-title">
