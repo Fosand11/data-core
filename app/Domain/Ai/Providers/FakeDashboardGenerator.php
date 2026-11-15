@@ -10,6 +10,22 @@ use Illuminate\Support\Str;
 
 final class FakeDashboardGenerator implements DashboardGenerator
 {
+    /** Chart types a refinement can switch between. */
+    private const CONVERTIBLE = ['bar', 'hbar', 'line', 'area', 'pie', 'funnel', 'treemap', 'radar'];
+
+    /**
+     * Charts that show one measure across one dimension's categories, and how many
+     * categories each may draw (the validator enforces the same bounds).
+     *
+     * @var array<string, array{max: int, min: int}>
+     */
+    private const CATEGORY_LIMITS = [
+        'pie' => ['max' => 6, 'min' => 1],
+        'funnel' => ['max' => 8, 'min' => 1],
+        'treemap' => ['max' => 20, 'min' => 1],
+        'radar' => ['max' => 8, 'min' => 3],
+    ];
+
     public function provider(): string
     {
         return 'fake';
@@ -65,7 +81,7 @@ final class FakeDashboardGenerator implements DashboardGenerator
 
         if ($type !== null) {
             foreach ($spec['visualizations'] as $index => $visualization) {
-                if (in_array($visualization['type'], ['bar', 'line', 'area', 'pie'], true)) {
+                if (in_array($visualization['type'], self::CONVERTIBLE, true)) {
                     $spec['visualizations'][$index] = $this->convertChart($visualization, $type);
 
                     break;
@@ -77,7 +93,7 @@ final class FakeDashboardGenerator implements DashboardGenerator
             $spec = $this->withDetailTable($spec);
         }
 
-        $spec['version'] = '1.1';
+        $spec['version'] = '1.2';
 
         return DashboardSpec::fromArray($spec);
     }
@@ -90,8 +106,12 @@ final class FakeDashboardGenerator implements DashboardGenerator
         $keywords = [
             'pie' => ['circular', 'pastel', 'pie', 'dona', 'donut'],
             'bar' => ['barras', 'columnas'],
+            'hbar' => ['horizontal'],
             'line' => ['linea'],
             'area' => ['area'],
+            'funnel' => ['embudo'],
+            'treemap' => ['treemap', 'arbol'],
+            'radar' => ['radar'],
         ];
         $found = null;
         $latest = -1;
@@ -130,12 +150,19 @@ final class FakeDashboardGenerator implements DashboardGenerator
             $visualization['query']['order_by'],
             fn (array $order): bool => in_array($order['field'], [$dimension, $metric['alias']], true),
         ));
-        $visualization['display'] = $type === 'pie'
+        $isCategoryChart = isset(self::CATEGORY_LIMITS[$type]);
+        $visualization['display'] = $isCategoryChart
             ? ['category' => $dimension, 'value' => $metric['alias']]
             : ['x_axis' => $dimension, 'y_axis' => $metric['alias']];
 
-        if ($type === 'pie') {
-            $visualization['query']['limit'] = min(6, (int) $visualization['query']['limit']);
+        if ($isCategoryChart) {
+            ['max' => $max, 'min' => $min] = self::CATEGORY_LIMITS[$type];
+            $visualization['query']['limit'] = max($min, min($max, (int) $visualization['query']['limit']));
+        }
+
+        // A funnel reads from the largest stage down.
+        if ($type === 'funnel') {
+            $visualization['query']['order_by'] = [['field' => $metric['alias'], 'direction' => 'desc']];
         }
 
         return $visualization;
@@ -245,8 +272,17 @@ final class FakeDashboardGenerator implements DashboardGenerator
         $fields = $catalog->fields();
         $labels = $catalog->labels();
         $label = fn (string $field): string => $labels[$field] ?? $field;
-        $numeric = array_key_first(array_filter($fields, fn (string $type): bool => $type === 'numeric'));
-        $text = array_key_first(array_filter($fields, fn (string $type): bool => $type === 'string'));
+        // Identifiers, names, contact details: poor things to group a chart by, so they come last.
+        $byUsefulness = function (string $type) use ($fields): array {
+            $matching = array_keys(array_filter($fields, fn (string $fieldType): bool => $fieldType === $type));
+            usort($matching, fn (string $a, string $b): int => $this->isIdentifying($a) <=> $this->isIdentifying($b));
+
+            return $matching;
+        };
+        $texts = $byUsefulness('string');
+        $numerics = $byUsefulness('numeric');
+        $numeric = $numerics[0] ?? null;
+        $text = $texts[0] ?? null;
         $date = $catalog->dateField();
         $any = array_key_first($fields);
 
@@ -261,8 +297,9 @@ final class FakeDashboardGenerator implements DashboardGenerator
 
         $measure = $numeric ?? $any;
         $aggregation = $numeric !== null ? 'sum' : 'count';
-        $total = $alias('m_total');
-        $records = $alias('m_records');
+        $prefix = $aggregation === 'sum' ? 'total_' : 'conteo_';
+        $total = $alias($prefix.$measure);
+        $records = $alias('registros');
         $visualizations = [];
 
         if ($numeric !== null) {
@@ -276,16 +313,168 @@ final class FakeDashboardGenerator implements DashboardGenerator
         }
 
         if ($date !== null) {
-            $visualizations[] = $this->chart('over_time', 'Evolución mensual', 'line', $date, $measure, $aggregation, $alias('m_trend'), $text !== null ? 6 : 0, 2, $text !== null ? 6 : 12, 4, 'desc', 'number');
+            $visualizations[] = $this->chart('over_time', 'Evolución mensual', 'line', $date, $measure, $aggregation, $alias($prefix.$measure), $text !== null ? 6 : 0, 2, $text !== null ? 6 : 12, 4, 'desc', 'number');
         }
 
         if ($text !== null) {
-            $visualizations[] = $this->table('summary', 'Resumen por '.$label($text), [$text], [['field' => $measure, 'aggregation' => $aggregation, 'alias' => $alias('m_value'), 'format' => 'number']], 0, 6);
+            $visualizations[] = $this->table('summary', 'Resumen por '.$label($text), [$text], [['field' => $measure, 'aggregation' => $aggregation, 'alias' => $alias($prefix.$measure), 'format' => 'number']], 0, 6);
+        }
+
+        $extras = $this->requestedVisualTypes(Str::lower(Str::ascii($prompt)));
+        $row = 0;
+
+        foreach ($extras as $type) {
+            $built = $this->extraVisual($type, $catalog, $texts, $numerics, $alias, $label, $row);
+
+            if ($built !== null) {
+                $visualizations[] = $built;
+                $row++;
+            }
+        }
+
+        // Requested extras sit between the overview charts and the summary table.
+        if ($row > 0) {
+            $tableY = 6 + intdiv($row + 1, 2) * 4;
+
+            foreach ($visualizations as $index => $visualization) {
+                if ($visualization['key'] === 'summary') {
+                    $visualizations[$index]['layout']['y'] = $tableY;
+                }
+            }
         }
 
         $title = Str::limit(trim($prompt) !== '' ? trim($prompt) : 'Resumen de tus datos', 100, '…');
 
         return $this->spec($title, 'Un resumen general de tus datos.', [], $visualizations, $catalog->dataset());
+    }
+
+    /**
+     * 1 for a column that identifies or contacts a person or record (id, name, e-mail,
+     * phone, address): it has a different value on nearly every row, so it makes a
+     * useless axis.
+     */
+    private function isIdentifying(string $field): int
+    {
+        return preg_match('/(^|_)(id|codigo|cod|correo|email|mail|nombre|name|telefono|tel|phone|direccion|address|url|folio)($|_)/i', Str::ascii($field)) === 1 ? 1 : 0;
+    }
+
+    /**
+     * The visual types a creation request names, in the order they appear in it.
+     *
+     * @return list<string>
+     */
+    private function requestedVisualTypes(string $request): array
+    {
+        $keywords = [
+            'hbar' => ['horizontal', 'ranking'],
+            'funnel' => ['embudo'],
+            'treemap' => ['treemap', 'arbol'],
+            'radar' => ['radar'],
+            'scatter' => ['dispersion', 'scatter', 'relacion entre'],
+            'gauge' => ['medidor', 'gauge', 'velocimetro'],
+        ];
+        $found = [];
+
+        foreach ($keywords as $type => $words) {
+            foreach ($words as $word) {
+                $position = strpos($request, $word);
+
+                if ($position !== false) {
+                    $found[$type] = min($found[$type] ?? PHP_INT_MAX, $position);
+                }
+            }
+        }
+
+        asort($found);
+
+        return array_keys($found);
+    }
+
+    /**
+     * One of the extra visuals, or null when the dataset has no columns it could use.
+     *
+     * @param  list<string>  $texts
+     * @param  list<string>  $numerics
+     * @param  callable(string): string  $alias
+     * @param  callable(string): string  $label
+     * @return array<string, mixed>|null
+     */
+    private function extraVisual(string $type, DatasetCatalog $catalog, array $texts, array $numerics, callable $alias, callable $label, int $row): ?array
+    {
+        $x = $row % 2 === 0 ? 0 : 6;
+        $y = 6 + intdiv($row, 2) * 4;
+
+        if ($type === 'gauge') {
+            if ($numerics === []) {
+                return null;
+            }
+
+            // A column whose header states its scale ("Satisfacción (1-10)") is what a gauge is for.
+            // Without seeing any row, that header is also the best guess for the maximum.
+            $range = '/(\d+)\s*[-–]\s*(\d+)/u';
+            $measure = collect($numerics)->first(fn (string $field): bool => preg_match($range, $label($field)) === 1) ?? $numerics[0];
+            $max = preg_match($range, $label($measure), $found) === 1 ? (float) $found[2] : 100.0;
+
+            return [
+                'key' => 'gauge',
+                'title' => 'Promedio de '.$label($measure),
+                'type' => 'gauge',
+                'query' => [
+                    'metrics' => [['field' => $measure, 'aggregation' => 'avg', 'alias' => $alias('promedio_'.$measure), 'format' => 'number']],
+                    'dimensions' => [],
+                    'filters' => [],
+                    'order_by' => [],
+                    'limit' => 1,
+                ],
+                'display' => ['value' => $alias('promedio_'.$measure), 'max' => $max],
+                'layout' => ['x' => $x, 'y' => $y, 'width' => 6, 'height' => 4],
+            ];
+        }
+
+        if ($texts === []) {
+            return null;
+        }
+
+        // Spread the categories over different columns so the extra charts are not all the same view.
+        $useful = array_values(array_filter($texts, fn (string $field): bool => $this->isIdentifying($field) === 0)) ?: $texts;
+        $dimension = $useful[$row % count($useful)];
+        $measure = $numerics[0] ?? array_key_first($catalog->fields());
+        $aggregation = $numerics !== [] ? 'sum' : 'count';
+        $metricAlias = $alias(($aggregation === 'sum' ? 'total_' : 'conteo_').$measure);
+        $title = $label($measure).' por '.$label($dimension);
+
+        if ($type === 'scatter') {
+            if (count($numerics) < 2) {
+                return null;
+            }
+
+            $xAlias = $alias('promedio_'.$numerics[0]);
+            $yAlias = $alias('promedio_'.$numerics[1]);
+
+            return [
+                'key' => 'scatter',
+                'title' => $label($numerics[0]).' vs '.$label($numerics[1]).' por '.$label($dimension),
+                'type' => 'scatter',
+                'query' => [
+                    'metrics' => [
+                        ['field' => $numerics[0], 'aggregation' => 'avg', 'alias' => $xAlias, 'format' => 'number'],
+                        ['field' => $numerics[1], 'aggregation' => 'avg', 'alias' => $yAlias, 'format' => 'number'],
+                    ],
+                    'dimensions' => [['field' => $dimension]],
+                    'filters' => [],
+                    'order_by' => [],
+                    'limit' => 100,
+                ],
+                'display' => ['x_axis' => $xAlias, 'y_axis' => $yAlias, 'category' => $dimension],
+                'layout' => ['x' => $x, 'y' => $y, 'width' => 6, 'height' => 4],
+            ];
+        }
+
+        if ($type === 'hbar') {
+            return $this->chart('ranking', $title, 'hbar', $dimension, $measure, $aggregation, $metricAlias, $x, $y, 6, 4, 'desc', 'number');
+        }
+
+        return $this->pie($type, $title, $dimension, $measure, $aggregation, $metricAlias, $x, $y, 6, 4, $type, 'number');
     }
 
     /**
@@ -295,7 +484,7 @@ final class FakeDashboardGenerator implements DashboardGenerator
     private function spec(string $title, string $description, array $globalFilters, array $visualizations, string $dataset = 'demo_sales'): DashboardSpec
     {
         return DashboardSpec::fromArray([
-            'version' => '1.1',
+            'version' => '1.2',
             'title' => $title,
             'description' => $description,
             'dataset' => $dataset,
@@ -353,8 +542,8 @@ final class FakeDashboardGenerator implements DashboardGenerator
                 'metrics' => [['field' => $metric, 'aggregation' => $aggregation, 'alias' => $alias, 'format' => $format]],
                 'dimensions' => [['field' => $dimension]],
                 'filters' => [],
-                'order_by' => $type === 'bar' ? [['field' => $alias, 'direction' => $direction]] : [],
-                'limit' => $type === 'bar' ? 8 : 24,
+                'order_by' => in_array($type, ['bar', 'hbar'], true) ? [['field' => $alias, 'direction' => $direction]] : [],
+                'limit' => in_array($type, ['bar', 'hbar'], true) ? 8 : 24,
             ],
             'display' => ['x_axis' => $dimension, 'y_axis' => $alias],
             'layout' => ['x' => $x, 'y' => $y, 'width' => $width, 'height' => $height],
@@ -375,17 +564,19 @@ final class FakeDashboardGenerator implements DashboardGenerator
         int $y,
         int $width,
         int $height,
+        string $type = 'pie',
+        string $format = 'currency',
     ): array {
         return [
             'key' => $key,
             'title' => $title,
-            'type' => 'pie',
+            'type' => $type,
             'query' => [
-                'metrics' => [['field' => $metric, 'aggregation' => $aggregation, 'alias' => $alias, 'format' => 'currency']],
+                'metrics' => [['field' => $metric, 'aggregation' => $aggregation, 'alias' => $alias, 'format' => $format]],
                 'dimensions' => [['field' => $dimension]],
                 'filters' => [],
                 'order_by' => [['field' => $alias, 'direction' => 'desc']],
-                'limit' => 6,
+                'limit' => self::CATEGORY_LIMITS[$type]['max'],
             ],
             'display' => ['category' => $dimension, 'value' => $alias],
             'layout' => ['x' => $x, 'y' => $y, 'width' => $width, 'height' => $height],

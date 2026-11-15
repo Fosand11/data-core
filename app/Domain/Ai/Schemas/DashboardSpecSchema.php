@@ -19,7 +19,7 @@ final class DashboardSpecSchema
 
         unset($schema['$schema'], $schema['$id']);
         // New generations always target the latest contract version.
-        $schema['properties']['version'] = ['const' => '1.1'];
+        $schema['properties']['version'] = ['const' => '1.2'];
         $this->replaceConditionalVisualization($schema);
 
         /** @var array<string, mixed> $strictSchema */
@@ -43,7 +43,7 @@ final class DashboardSpecSchema
         $schema = $this->canonical();
         unset($schema['$schema'], $schema['$id']);
 
-        $schema['properties']['version'] = ['type' => 'string', 'enum' => ['1.1']];
+        $schema['properties']['version'] = ['type' => 'string', 'enum' => ['1.2']];
         $this->replaceVisualizationWithFlatDisplay($schema);
 
         $definitions = $schema['$defs'];
@@ -97,11 +97,11 @@ final class DashboardSpecSchema
             'properties' => [
                 'key' => $properties['key'],
                 'title' => $properties['title'],
-                'type' => ['type' => 'string', 'enum' => ['kpi', 'bar', 'line', 'area', 'pie', 'table']],
+                'type' => ['type' => 'string', 'enum' => ['kpi', 'bar', 'line', 'area', 'pie', 'table', 'hbar', 'funnel', 'treemap', 'radar', 'scatter', 'gauge']],
                 'query' => $properties['query'],
                 'display' => [
                     'type' => 'object',
-                    'description' => 'Fill only the keys of the visualization type: kpi uses show_comparison; bar, line and area use x_axis and y_axis; pie uses category and value; table uses columns.',
+                    'description' => 'Fill only the keys of the visualization type: kpi uses show_comparison; bar, hbar, line and area use x_axis (a dimension) and y_axis (a metric alias); pie, funnel, treemap and radar use category (the dimension) and value (a metric alias); scatter uses x_axis and y_axis (two different metric aliases) and category (the dimension); gauge uses value (a metric alias) and max (a positive number); table uses columns.',
                     'additionalProperties' => false,
                     'properties' => [
                         'show_comparison' => ['type' => 'boolean'],
@@ -109,6 +109,7 @@ final class DashboardSpecSchema
                         'y_axis' => ['$ref' => '#/$defs/fieldIdentifier'],
                         'category' => ['$ref' => '#/$defs/fieldIdentifier'],
                         'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                        'max' => ['type' => 'number'],
                         'columns' => ['type' => 'array', 'items' => ['$ref' => '#/$defs/fieldIdentifier']],
                     ],
                 ],
@@ -235,6 +236,32 @@ final class DashboardSpecSchema
                 $this->visualizationVariant($base, 'pie', [
                     'category' => ['$ref' => '#/$defs/fieldIdentifier'],
                     'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'hbar', [
+                    'x_axis' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'y_axis' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'funnel', [
+                    'category' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'treemap', [
+                    'category' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'radar', [
+                    'category' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'scatter', [
+                    'x_axis' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'y_axis' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    'category' => ['$ref' => '#/$defs/fieldIdentifier'],
+                ]),
+                $this->visualizationVariant($base, 'gauge', [
+                    'value' => ['$ref' => '#/$defs/fieldIdentifier'],
+                    // Bounds are enforced by DashboardSpecValidator; strict outputs only need the type.
+                    'max' => ['type' => 'number'],
                 ]),
                 $this->visualizationVariant($base, 'table', [
                     'columns' => [

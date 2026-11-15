@@ -58,7 +58,7 @@ class GeminiDashboardGeneratorTest extends TestCase
             $this->assertArrayNotHasKey('tools', $payload);
             $this->assertStringNotContainsString($input->tenantId, $encoded);
             $this->assertStringNotContainsString((string) $input->requestedBy, $encoded);
-            $this->assertSame(['1.1'], $schema['properties']['version']['enum']);
+            $this->assertSame(['1.2'], $schema['properties']['version']['enum']);
 
             return true;
         });

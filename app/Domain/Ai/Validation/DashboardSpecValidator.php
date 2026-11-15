@@ -31,13 +31,28 @@ final class DashboardSpecValidator
     ];
 
     /**
-     * Version 1.0 dashboards stay valid; 1.1 adds the area and pie types.
+     * Version 1.0 dashboards stay valid; 1.1 adds the area and pie types and 1.2 adds
+     * horizontal bars, funnel, treemap, radar, scatter and gauge.
      *
      * @var array<string, list<string>>
      */
     private const TYPES_BY_VERSION = [
         '1.0' => ['kpi', 'bar', 'line', 'table'],
         '1.1' => ['kpi', 'bar', 'line', 'area', 'pie', 'table'],
+        '1.2' => ['kpi', 'bar', 'line', 'area', 'pie', 'table', 'hbar', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'],
+    ];
+
+    /**
+     * The charts that show one measure across a single dimension's categories, with the
+     * most categories each can draw legibly (and the fewest, where it matters).
+     *
+     * @var array<string, array{max: int, min: int}>
+     */
+    private const CATEGORY_CHARTS = [
+        'pie' => ['max' => 6, 'min' => 1],
+        'funnel' => ['max' => 8, 'min' => 1],
+        'treemap' => ['max' => 20, 'min' => 1],
+        'radar' => ['max' => 8, 'min' => 3],
     ];
 
     private const FORMATS = ['currency', 'number', 'percent', 'integer'];
@@ -69,7 +84,7 @@ final class DashboardSpecValidator
         );
 
         if (! is_string($definition['version']) || ! array_key_exists($definition['version'], self::TYPES_BY_VERSION)) {
-            $this->fail('$.version must be a supported version ("1.0" or "1.1").');
+            $this->fail('$.version must be a supported version ("1.0", "1.1" or "1.2").');
         }
 
         $allowedTypes = self::TYPES_BY_VERSION[$definition['version']];
@@ -113,9 +128,7 @@ final class DashboardSpecValidator
 
             $queryFields = $this->validateQuery($item['query'], "{$path}.query");
 
-            if ($item['type'] === 'pie') {
-                $this->assertPieQuery($item['query'], $queryFields, $path);
-            }
+            $this->assertQueryShape($item['type'], $item['query'], $queryFields, $path);
             $this->validateDisplay($item['display'], $item['type'], $queryFields, "{$path}.display");
             $this->validateVisualizationLayout($item['layout'], $columns, "{$path}.layout");
             $this->assertNoOverlap($item['layout'], $placed, "{$path}.layout");
@@ -126,20 +139,57 @@ final class DashboardSpecValidator
     }
 
     /**
-     * A pie shows the share of one measure across few categories; the palette
-     * has six validated slots, so a pie never has more slices than that.
+     * The shape of the query a type needs: category charts take exactly one dimension and
+     * a bounded number of categories (a pie, for instance, never has more slices than the
+     * palette has colours), a scatter needs two measures per point, a gauge a single value.
      *
      * @param  array<string, mixed>  $query
      * @param  array{metrics: list<string>, dimensions: list<string>}  $queryFields
      */
-    private function assertPieQuery(array $query, array $queryFields, string $path): void
+    private function assertQueryShape(string $type, array $query, array $queryFields, string $path): void
     {
-        if (count($queryFields['dimensions']) !== 1) {
-            $this->fail("{$path}.query.dimensions must contain exactly one dimension for a pie.");
+        if (isset(self::CATEGORY_CHARTS[$type])) {
+            ['max' => $max, 'min' => $min] = self::CATEGORY_CHARTS[$type];
+            $this->assertOneDimension($queryFields, $type, $path);
+
+            if ($query['limit'] > $max) {
+                $unit = $type === 'pie' ? 'slices' : 'categories';
+                $this->fail("{$path}.query.limit may not exceed {$max} {$unit} for a {$type}.");
+            }
+
+            if ($query['limit'] < $min) {
+                $this->fail("{$path}.query.limit must allow at least {$min} categories for a {$type}.");
+            }
+
+            return;
         }
 
-        if ($query['limit'] > 6) {
-            $this->fail("{$path}.query.limit may not exceed 6 slices for a pie.");
+        if ($type === 'scatter') {
+            $this->assertOneDimension($queryFields, $type, $path);
+
+            if (count($queryFields['metrics']) < 2) {
+                $this->fail("{$path}.query.metrics must contain at least two metrics for a scatter.");
+            }
+
+            if ($query['limit'] > 100) {
+                $this->fail("{$path}.query.limit may not exceed 100 points for a scatter.");
+            }
+
+            return;
+        }
+
+        if ($type === 'gauge' && ($queryFields['dimensions'] !== [] || count($queryFields['metrics']) !== 1)) {
+            $this->fail("{$path}.query must have exactly one metric and no dimensions for a gauge.");
+        }
+    }
+
+    /**
+     * @param  array{metrics: list<string>, dimensions: list<string>}  $queryFields
+     */
+    private function assertOneDimension(array $queryFields, string $type, string $path): void
+    {
+        if (count($queryFields['dimensions']) !== 1) {
+            $this->fail("{$path}.query.dimensions must contain exactly one dimension for a {$type}.");
         }
     }
 
@@ -457,7 +507,46 @@ final class DashboardSpecValidator
             return;
         }
 
-        if ($type === 'pie') {
+        if ($type === 'gauge') {
+            $this->assertKeys($display, ['value', 'max'], [], $path);
+            $this->assertIdentifier($display['value'], "{$path}.value", 128);
+
+            if (! in_array($display['value'], $queryFields['metrics'], true)) {
+                $this->fail("{$path}.value must reference a configured metric alias.");
+            }
+
+            if ((! is_int($display['max']) && ! is_float($display['max'])) || $display['max'] <= 0 || $display['max'] > 1.0E+12) {
+                $this->fail("{$path}.max must be a positive number.");
+            }
+
+            return;
+        }
+
+        if ($type === 'scatter') {
+            $this->assertKeys($display, ['x_axis', 'y_axis', 'category'], [], $path);
+
+            foreach (['x_axis', 'y_axis'] as $axis) {
+                $this->assertIdentifier($display[$axis], "{$path}.{$axis}", 128);
+
+                if (! in_array($display[$axis], $queryFields['metrics'], true)) {
+                    $this->fail("{$path}.{$axis} must reference a configured metric alias.");
+                }
+            }
+
+            if ($display['x_axis'] === $display['y_axis']) {
+                $this->fail("{$path}.x_axis and {$path}.y_axis must be different metrics.");
+            }
+
+            $this->assertIdentifier($display['category'], "{$path}.category", 128);
+
+            if (! in_array($display['category'], $queryFields['dimensions'], true)) {
+                $this->fail("{$path}.category must reference a configured dimension.");
+            }
+
+            return;
+        }
+
+        if (isset(self::CATEGORY_CHARTS[$type])) {
             $this->assertKeys($display, ['category', 'value'], [], $path);
             $this->assertIdentifier($display['category'], "{$path}.category", 128);
             $this->assertIdentifier($display['value'], "{$path}.value", 128);
@@ -473,7 +562,7 @@ final class DashboardSpecValidator
             return;
         }
 
-        if ($type === 'bar' || $type === 'line' || $type === 'area') {
+        if (in_array($type, ['bar', 'hbar', 'line', 'area'], true)) {
             $this->assertKeys($display, ['x_axis', 'y_axis'], [], $path);
             $this->assertIdentifier($display['x_axis'], "{$path}.x_axis", 128);
             $this->assertIdentifier($display['y_axis'], "{$path}.y_axis", 128);

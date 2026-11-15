@@ -59,12 +59,12 @@ class OpenAiDashboardGeneratorTest extends TestCase
             $this->assertStringNotContainsString('sales_representative', $systemInstructions);
             $this->assertArrayHasKey('anyOf', $schema['$defs']['visualization']);
             $this->assertArrayNotHasKey('allOf', $schema['$defs']['visualization']);
-            $this->assertSame('1.1', $schema['properties']['version']['const']);
+            $this->assertSame('1.2', $schema['properties']['version']['const']);
             $variantTypes = array_map(
                 fn (array $variant): string => $variant['properties']['type']['const'],
                 $schema['$defs']['visualization']['anyOf'],
             );
-            $this->assertEqualsCanonicalizing(['kpi', 'bar', 'line', 'area', 'pie', 'table'], $variantTypes);
+            $this->assertEqualsCanonicalizing(['kpi', 'bar', 'line', 'area', 'pie', 'table', 'hbar', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'], $variantTypes);
             $this->assertContains('format', $schema['$defs']['metric']['required']);
             $this->assertContains(null, $schema['$defs']['metric']['properties']['format']['enum'], true);
 

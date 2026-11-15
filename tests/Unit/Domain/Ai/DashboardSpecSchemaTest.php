@@ -39,9 +39,9 @@ class DashboardSpecSchemaTest extends TestCase
         $schema = (new DashboardSpecSchema)->forGemini();
         $visualization = $schema['properties']['visualizations']['items'];
 
-        $this->assertSame(['1.1'], $schema['properties']['version']['enum']);
+        $this->assertSame(['1.2'], $schema['properties']['version']['enum']);
         $this->assertEqualsCanonicalizing(
-            ['kpi', 'bar', 'line', 'area', 'pie', 'table'],
+            ['kpi', 'bar', 'line', 'area', 'pie', 'table', 'hbar', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'],
             $visualization['properties']['type']['enum'],
         );
         $this->assertSame([12], $schema['properties']['layout']['properties']['columns']['enum']);
@@ -102,7 +102,7 @@ class DashboardSpecSchemaTest extends TestCase
         $strict = $schema->forStructuredOutputs();
 
         $this->assertArrayHasKey('$defs', $strict);
-        $this->assertSame('1.1', $strict['properties']['version']['const']);
+        $this->assertSame('1.2', $strict['properties']['version']['const']);
     }
 
     /**
