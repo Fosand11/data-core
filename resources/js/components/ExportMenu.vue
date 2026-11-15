@@ -4,7 +4,7 @@ import { printDashboard } from '@/composables/usePrint';
 import { showToast } from '@/composables/useToast';
 import { downloadBlob, exportFilename } from '@/lib/export';
 import type { DashboardSpec, ExportContext, VisualizationData } from '@/types';
-import { Download, LoaderCircle, Presentation, Printer } from 'lucide-vue-next';
+import { Download, FileDown, LoaderCircle, Presentation, Printer } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 const props = defineProps<{
@@ -15,12 +15,34 @@ const props = defineProps<{
     disabled?: boolean;
 }>();
 
-const working = ref<'pdf' | 'pptx' | null>(null);
+const working = ref<'pdf' | 'pptx' | 'print' | null>(null);
 
 async function exportPdf() {
+    if (!props.data) return;
+
     working.value = 'pdf';
 
     try {
+        // Loaded on demand, like the PowerPoint builder: most visits never export.
+        const { buildDashboardPdf } = await import('@/lib/exportPdf');
+        const blob = await buildDashboardPdf(props.spec, props.data, props.context);
+        const filename = exportFilename([props.context.title], 'pdf');
+
+        downloadBlob(blob, filename);
+        showToast(`PDF descargado: ${filename}`);
+    } catch {
+        showToast('No se pudo crear el PDF. Inténtalo de nuevo.');
+    } finally {
+        working.value = null;
+    }
+}
+
+async function printNow() {
+    working.value = 'print';
+
+    try {
+        // Wait for the menu to finish closing: printing while it fades out put it in the picture.
+        await new Promise((resolve) => setTimeout(resolve, 450));
         await printDashboard();
     } catch {
         showToast('No se pudo preparar la impresión. Inténtalo de nuevo.');
@@ -67,12 +89,18 @@ async function exportPowerPoint() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="w-60 rounded-xl">
             <DropdownMenuItem class="gap-2.5 rounded-lg" @select="exportPdf">
-                <Printer class="size-4 text-muted-foreground" aria-hidden="true" />
-                <span class="flex flex-col">PDF<span class="text-xs text-muted-foreground">Imprimir o guardar como PDF</span></span>
+                <FileDown class="size-4 text-muted-foreground" aria-hidden="true" />
+                <span class="flex flex-col">PDF<span class="text-xs text-muted-foreground">Descargar el dashboard completo</span></span>
             </DropdownMenuItem>
             <DropdownMenuItem class="gap-2.5 rounded-lg" @select="exportPowerPoint">
                 <Presentation class="size-4 text-muted-foreground" aria-hidden="true" />
-                <span class="flex flex-col">PowerPoint<span class="text-xs text-muted-foreground">Presentación editable (.pptx)</span></span>
+                <span class="flex flex-col"
+                    >PowerPoint<span class="text-xs text-muted-foreground">Vista completa y una diapositiva por gráfica</span></span
+                >
+            </DropdownMenuItem>
+            <DropdownMenuItem class="gap-2.5 rounded-lg" @select="printNow">
+                <Printer class="size-4 text-muted-foreground" aria-hidden="true" />
+                <span class="flex flex-col">Imprimir<span class="text-xs text-muted-foreground">Abrir el diálogo de impresión</span></span>
             </DropdownMenuItem>
         </DropdownMenuContent>
     </DropdownMenu>

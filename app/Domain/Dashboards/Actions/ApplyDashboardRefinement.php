@@ -10,6 +10,7 @@ use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Dashboards\Models\DashboardVersion;
 use App\Domain\Dashboards\Support\DashboardVersions;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,6 +21,7 @@ final readonly class ApplyDashboardRefinement
     public function __construct(
         private DashboardSpecValidator $validator,
         private DashboardVersions $versions,
+        private DatasetCatalogResolver $catalogs,
     ) {}
 
     public function execute(User $user, Dashboard $dashboard, DashboardGeneration $refinement): Dashboard
@@ -32,9 +34,13 @@ final readonly class ApplyDashboardRefinement
 
             $this->assertApplicable($locked, $proposal);
 
-            // The proposal comes from a model: validate it again before it becomes live.
+            // The proposal comes from a model: validate it again before it becomes live, against the
+            // catalog of the data this dashboard is built on (the demo data, or the customer's own file).
             try {
-                $spec = $this->validator->validate(DashboardSpec::fromArray($proposal->validated_spec))->toArray();
+                $spec = $this->validator
+                    ->forCatalog($this->catalogs->forDashboard($locked))
+                    ->validate(DashboardSpec::fromArray($proposal->validated_spec))
+                    ->toArray();
             } catch (InvalidDashboardSpecException) {
                 throw ValidationException::withMessages([
                     'refinement' => 'La propuesta ya no supera la validación de seguridad y no se puede aplicar.',

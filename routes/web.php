@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardSearchController;
 use App\Http\Controllers\DatasetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Tenancy\SelectTenantController;
+use App\Http\Middleware\AnswerHelpQuestions;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,7 +26,7 @@ Route::middleware(['auth', 'verified', 'current_tenant'])->group(function () {
         ->name('dashboards.search');
     Route::get('dashboards/create', [DashboardManagementController::class, 'create'])->name('dashboards.create');
     Route::post('dashboards', [DashboardManagementController::class, 'store'])
-        ->middleware('throttle:dashboard-generation')
+        ->middleware(AnswerHelpQuestions::class)
         ->name('dashboards.store');
     Route::get('dashboards/{dashboard}', [DashboardManagementController::class, 'show'])->name('dashboards.show');
     Route::patch('dashboards/{dashboard}', [DashboardManagementController::class, 'update'])->name('dashboards.update');
@@ -37,7 +38,7 @@ Route::middleware(['auth', 'verified', 'current_tenant'])->group(function () {
         ->middleware('throttle:dashboard-generation')
         ->name('dashboards.retry');
     Route::post('dashboards/{dashboard}/refinements', [DashboardRefinementController::class, 'store'])
-        ->middleware('throttle:dashboard-generation')
+        ->middleware(AnswerHelpQuestions::class)
         ->name('dashboards.refinements.store');
     Route::post('dashboards/{dashboard}/refinements/{refinement}/apply', [DashboardRefinementController::class, 'apply'])->name('dashboards.refinements.apply');
     Route::delete('dashboards/{dashboard}/refinements/{refinement}', [DashboardRefinementController::class, 'discard'])->name('dashboards.refinements.discard');

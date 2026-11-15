@@ -2,14 +2,23 @@
 
 namespace Tests\Feature\Dashboards\Datasets;
 
+use App\Domain\Ai\Contracts\DashboardGenerator;
+use App\Domain\Ai\Data\DashboardGenerationInput;
+use App\Domain\Ai\Providers\FakeDashboardGenerator;
+use App\Domain\Ai\Validation\DashboardSpecValidator;
 use App\Domain\Dashboards\Datasets\DatasetFileReader;
+use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
+use App\Domain\Dashboards\Enums\DashboardStatus;
 use App\Domain\Dashboards\Enums\DatasetStatus;
 use App\Domain\Dashboards\Jobs\GenerateDashboardJob;
 use App\Domain\Dashboards\Jobs\ImportDatasetJob;
+use App\Domain\Dashboards\Jobs\RefineDashboardJob;
 use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Dashboards\Models\DatasetColumn;
 use App\Domain\Dashboards\Models\DatasetRow;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Tenancy\Models\Tenant;
 use App\Domain\Tenancy\TenantContext;
 use App\Models\User;
@@ -259,6 +268,46 @@ class DatasetHttpTest extends TestCase
         $this->actingAs($this->owner)->get(route('dashboards.show', $dashboard))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->where('period.date_field', null));
+    }
+
+    public function test_a_change_proposed_for_a_dashboard_on_uploaded_data_can_be_applied(): void
+    {
+        // Regression: applying re-validates the proposal, and it used to do so against the demo
+        // data's catalog, so every change to a dashboard on a customer's own data was refused as
+        // "no longer passes the security validation".
+        config(['dashboard-ai.driver' => 'fake']);
+        $dataset = $this->readyDataset();
+        $tenantContext = app(TenantContext::class);
+        $catalog = $tenantContext->run($this->tenant, fn () => app(DatasetCatalogResolver::class)->forDataset($dataset->load('columns')));
+        $spec = (new FakeDashboardGenerator)
+            ->generate(new DashboardGenerationInput($this->tenant->getKey(), $this->owner->getKey(), 'resumen', catalog: $catalog))
+            ->toArray();
+        $dashboard = $tenantContext->run($this->tenant, fn (): Dashboard => Dashboard::factory()->for($this->tenant)->create([
+            'created_by' => $this->owner->getKey(),
+            'dataset_id' => $dataset->getKey(),
+            'status' => DashboardStatus::Ready,
+            'title' => $spec['title'],
+            'spec_version' => '1.2',
+            'dashboard_spec' => $spec,
+            'original_prompt' => 'resumen',
+        ]));
+
+        $this->actingAs($this->owner)
+            ->post(route('dashboards.refinements.store', $dashboard), ['instruction' => 'agrega una tabla de detalle'])
+            ->assertSessionHasNoErrors();
+        $proposal = DashboardGeneration::withoutTenantScope()->where('dashboard_id', $dashboard->getKey())->sole();
+        (new RefineDashboardJob($proposal->getKey()))->handle(app(DashboardGenerator::class), app(DashboardSpecValidator::class));
+        $this->assertSame(DashboardGenerationStatus::Completed, $proposal->refresh()->status);
+
+        $this->actingAs($this->owner)
+            ->post(route('dashboards.refinements.apply', [$dashboard, $proposal]))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status');
+
+        $dashboard->refresh();
+        $this->assertNotNull($proposal->refresh()->applied_at);
+        $this->assertContains('detail_table', array_column($dashboard->dashboard_spec['visualizations'], 'key'));
+        $this->assertSame($dataset->specKey(), $dashboard->dashboard_spec['dataset']);
     }
 
     public function test_deleting_a_dataset_through_http_removes_its_data(): void

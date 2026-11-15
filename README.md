@@ -40,7 +40,7 @@ Además de barras, línea, área y circular, la IA puede elegir **barras horizon
 - **Siete paletas validadas** para modo claro y oscuro: se comprobó la luminosidad, el croma, la separación entre vecinos para daltonismo y el contraste con la superficie. Solo se guarda un identificador de paleta y un número de color, nunca un color libre.
 - **La IA no decide los colores**: viven aparte del `DashboardSpec` (versión 1.2), así que un cambio pedido a la IA nunca los pisa.
 
-### 5. Claro y oscuro, buscador y exportación
+### 5. Claro y oscuro, buscador, exportación y ayuda
 
 ![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
 
@@ -152,10 +152,19 @@ flowchart LR
   hasta que lo aceptas. Cada cambio crea una versión: historial append-only con
   «deshacer», «volver al original» y restaurar cualquier versión.
 - Exportar, todo en el navegador y siempre en tema claro: imagen PNG y datos CSV
-  de cada gráfica; PDF del dashboard (impresión del navegador, A4 apaisado) y
-  presentación PowerPoint (.pptx) con portada, indicadores, una diapositiva por
-  gráfica (con texto alternativo) y tablas nativas editables. Los CSV protegen
-  contra la inyección de fórmulas y se abren en Excel (UTF-8 con BOM).
+  de cada gráfica; **PDF descargable** del dashboard completo (A4 apaisado, con la
+  misma distribución que en pantalla; si no cabe en una hoja continúa en la
+  siguiente sin partir ninguna gráfica) y presentación PowerPoint (.pptx) con
+  portada, **el dashboard completo en una diapositiva** (o varias si es muy alto),
+  indicadores, una diapositiva por gráfica (con texto alternativo) y tablas
+  nativas editables. También se puede imprimir. El PDF lo escribe un generador
+  propio mínimo, sin dependencias nuevas. Los CSV protegen contra la inyección de
+  fórmulas y se abren en Excel (UTF-8 con BOM).
+- Asistente de ayuda, sin IA y sin costo: pregunta «¿qué visuales tienes?»,
+  «sugiéreme algo», «¿qué no puedes hacer?» o «¿qué puedo hacer?» en el cuadro de
+  pregunta y responde con contenido fijo adaptado a tus columnas (qué visuales
+  admiten tus datos, preguntas sugeridas con los nombres de tus columnas, los
+  límites de la herramienta). No consume el límite de generaciones.
 
 ## Arquitectura en breve
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import AssistantReply from '@/components/AssistantReply.vue';
 import InputError from '@/components/InputError.vue';
+import { askAssistantAbout, useAssistantReply } from '@/composables/useAssistant';
 import { useForm } from '@inertiajs/vue3';
-import { ArrowUp, LoaderCircle, WandSparkles } from 'lucide-vue-next';
+import { ArrowUp, CircleHelp, LoaderCircle, WandSparkles } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -13,6 +15,7 @@ const props = defineProps<{
 const suggestions = ['Cambia las barras por un gráfico circular', 'Agrega una tabla de detalle', 'Quita los filtros'];
 
 const form = useForm({ instruction: '' });
+const { reply, dismiss } = useAssistantReply();
 const canSubmit = computed(() => !props.locked && !form.processing && form.instruction.trim().length >= 5);
 
 const submit = () => {
@@ -71,6 +74,15 @@ const submit = () => {
             >
                 {{ suggestion }}
             </button>
+            <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full border border-dashed bg-card px-3 py-1 text-xs text-primary transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                @click="askAssistantAbout(props.dashboardId, '¿Qué puedo pedir?')"
+            >
+                <CircleHelp class="size-3.5" aria-hidden="true" /> ¿Qué puedo pedir?
+            </button>
         </div>
+
+        <AssistantReply v-if="reply" :reply="reply" @use="(text) => (form.instruction = text)" @close="dismiss" />
     </section>
 </template>
