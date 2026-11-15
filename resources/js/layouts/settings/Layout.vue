@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { appName } from '@/lib/brand';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Fingerprint, Palette, UserRound } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -33,7 +34,7 @@ const currentPath = computed(() => page.url.split('?')[0]);
         <header class="motion-reveal">
             <h1 class="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Configuración</h1>
             <p class="mt-2 max-w-2xl text-base leading-7 text-muted-foreground">
-                Cómo te identificas, cómo accedes y cómo prefieres ver InsightFlow.
+                Cómo te identificas, cómo accedes y cómo prefieres ver {{ appName() }}.
             </p>
         </header>
 

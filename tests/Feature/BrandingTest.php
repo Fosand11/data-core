@@ -34,4 +34,31 @@ class BrandingTest extends TestCase
 
         $this->assertSame([1200, 630], [$width, $height]);
     }
+
+    public function test_the_product_name_comes_from_the_configuration_everywhere_in_the_head(): void
+    {
+        config(['app.name' => 'Nombre de prueba']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('<title inertia>Nombre de prueba</title>', false)
+            ->assertSee('<meta name="application-name" content="Nombre de prueba">', false)
+            ->assertSee('<meta property="og:site_name" content="Nombre de prueba">', false)
+            ->assertSee('<meta property="og:title" content="Nombre de prueba · Pregúntale a tus datos">', false);
+    }
+
+    public function test_the_shipped_default_name_is_the_product_and_never_the_framework(): void
+    {
+        // The production image has no .env file, so this default is what the tab shows.
+        // Read from the file, not from config(): a developer's own .env may set another APP_NAME.
+        $this->assertStringContainsString("'name' => env('APP_NAME', 'Atisbo')", (string) file_get_contents(config_path('app.php')));
+        $this->assertStringNotContainsString('Laravel', (string) file_get_contents(resource_path('views/app.blade.php')));
+    }
+
+    public function test_the_frontend_does_not_take_the_name_from_a_build_time_variable(): void
+    {
+        // VITE_APP_NAME is baked in at build time; the Docker build has no .env, so it fell back to "Laravel".
+        $this->assertStringNotContainsString('VITE_APP_NAME', (string) file_get_contents(resource_path('js/app.ts')));
+        $this->assertStringNotContainsString('VITE_APP_NAME', (string) file_get_contents(base_path('.env.example')));
+    }
 }

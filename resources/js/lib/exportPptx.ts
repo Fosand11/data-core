@@ -1,4 +1,5 @@
 import { lightThemeFor } from '@/composables/useChartTheme';
+import { appName } from '@/lib/brand';
 import { describeChart } from '@/lib/chartOptions';
 import { formatCell, formatValue } from '@/lib/format';
 import { describeFilter, labelFor } from '@/lib/labels';
@@ -43,8 +44,8 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
 
     pptx.layout = 'LAYOUT_WIDE';
     pptx.title = context.title;
-    pptx.author = 'InsightFlow';
-    pptx.company = 'InsightFlow';
+    pptx.author = appName();
+    pptx.company = appName();
 
     pptx.defineSlideMaster({
         title: 'CONTENT',
@@ -53,7 +54,7 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
             { line: { x: 0.5, y: 6.95, w: 12.33, h: 0, line: { color: BORDER, width: 0.75 } } },
             {
                 text: {
-                    text: `InsightFlow · ${context.datasetName ?? 'Datos de ejemplo'}`,
+                    text: `${appName()} · ${context.datasetName ?? 'Datos de ejemplo'}`,
                     options: { x: 0.5, y: 7.02, w: 6, h: 0.3, fontFace: FONT, fontSize: 10, color: MUTED },
                 },
             },
@@ -79,7 +80,7 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
         fontSize: 14,
         color: '4FCB9B',
     });
-    cover.addText('InsightFlow', { x: 0.8, y: 6.7, w: 4, h: 0.4, fontFace: FONT, fontSize: 12, bold: true, color: 'FFFFFF' });
+    cover.addText(appName(), { x: 0.8, y: 6.7, w: 4, h: 0.4, fontFace: FONT, fontSize: 12, bold: true, color: 'FFFFFF' });
 
     const ordered = inReadingOrder(spec.visualizations);
 

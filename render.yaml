@@ -20,7 +20,7 @@ services:
     healthCheckPath: /up
     envVars:
       - key: APP_NAME
-        value: InsightFlow
+        value: Atisbo
       - key: APP_ENV
         value: production
       - key: APP_DEBUG

@@ -3,6 +3,7 @@ import AppLogo from '@/components/AppLogo.vue';
 import ProductPreview from '@/components/ProductPreview.vue';
 import StudioCredit from '@/components/StudioCredit.vue';
 import { buttonVariants } from '@/components/ui/button';
+import { appName } from '@/lib/brand';
 import { cn } from '@/lib/utils';
 import type { SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -34,7 +35,7 @@ const features = [
 
     <div class="min-h-screen bg-background text-foreground">
         <header class="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-            <Link :href="route('home')" class="flex items-center" aria-label="InsightFlow">
+            <Link :href="route('home')" class="flex items-center" :aria-label="appName()">
                 <AppLogo />
             </Link>
             <nav class="flex items-center gap-2" aria-label="Cuenta">
@@ -51,7 +52,7 @@ const features = [
                 <p class="text-sm font-medium text-primary">Dashboards con lenguaje natural</p>
                 <h1 class="mt-4 text-5xl font-semibold tracking-tight sm:text-7xl">Pregúntale a tus datos.</h1>
                 <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-                    Escribe lo que quieres entender. InsightFlow diseña el dashboard, lo valida y calcula los números en tu propio servidor.
+                    Escribe lo que quieres entender. {{ appName() }} diseña el dashboard, lo valida y calcula los números en tu propio servidor.
                 </p>
                 <div class="mt-9 flex flex-wrap justify-center gap-3">
                     <Link
@@ -74,7 +75,7 @@ const features = [
                 <ProductPreview />
             </section>
 
-            <section class="mx-auto grid max-w-5xl gap-10 px-6 pb-24 sm:grid-cols-3" aria-label="Por qué InsightFlow">
+            <section class="mx-auto grid max-w-5xl gap-10 px-6 pb-24 sm:grid-cols-3" :aria-label="`Por qué ${appName()}`">
                 <div v-for="feature in features" :key="feature.title">
                     <span class="flex size-10 items-center justify-center rounded-xl bg-primary-subtle text-primary">
                         <component :is="feature.icon" class="size-5" aria-hidden="true" />
@@ -88,7 +89,7 @@ const features = [
         <footer class="border-t">
             <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-6 py-6 text-xs text-muted-foreground">
                 <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span>© {{ new Date().getFullYear() }} InsightFlow</span>
+                    <span>© {{ new Date().getFullYear() }} {{ appName() }}</span>
                     <StudioCredit />
                 </span>
                 <span>Laravel · Vue · ECharts · Gemini</span>

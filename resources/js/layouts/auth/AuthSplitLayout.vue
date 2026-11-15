@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLogo from '@/components/AppLogo.vue';
 import AuthVisualPanel from '@/components/AuthVisualPanel.vue';
+import { appName } from '@/lib/brand';
 import { Link } from '@inertiajs/vue3';
 
 defineProps<{
@@ -25,7 +26,7 @@ defineProps<{
                 <slot />
             </div>
 
-            <p class="text-center text-xs text-muted-foreground lg:text-left">© {{ new Date().getFullYear() }} InsightFlow</p>
+            <p class="text-center text-xs text-muted-foreground lg:text-left">© {{ new Date().getFullYear() }} {{ appName() }}</p>
         </main>
 
         <AuthVisualPanel :title="promoTitle" />
