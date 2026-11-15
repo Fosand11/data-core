@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import ChartColorMenu from '@/components/dashboard/ChartColorMenu.vue';
 import DashboardKpi from '@/components/dashboard/DashboardKpi.vue';
 import DashboardTable from '@/components/dashboard/DashboardTable.vue';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LIGHT_CHART_THEME } from '@/composables/useChartTheme';
+import { lightThemeFor } from '@/composables/useChartTheme';
 import { registerPrintPreparer } from '@/composables/usePrint';
 import { showToast } from '@/composables/useToast';
-import { hasPartialPeriod } from '@/lib/chartOptions';
+import { SINGLE_COLOR_TYPES, hasPartialPeriod } from '@/lib/chartOptions';
 import { composeImage, downloadBlob, downloadUrl, exportFilename, toCsv } from '@/lib/export';
 import { describeFilter } from '@/lib/labels';
 import { visualizationIcons } from '@/lib/visualizationIcons';
-import type { DashboardVisualization, ExportContext, VisualizationResult } from '@/types';
+import type { ChartPaletteOption, DashboardVisualization, ExportContext, VisualizationResult } from '@/types';
 import { Download, FileSpreadsheet, ImageDown } from 'lucide-vue-next';
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, ref } from 'vue';
 
@@ -18,12 +19,22 @@ const props = defineProps<{
     visualization: DashboardVisualization;
     result?: VisualizationResult;
     exportContext?: ExportContext;
+    palette?: ChartPaletteOption;
+    /** The palette slot the author chose for this chart (single-series charts only). */
+    accent?: number;
+    canStyle?: boolean;
 }>();
+
+const emit = defineEmits<{ color: [slot: number] }>();
 
 // ECharts is only downloaded when a dashboard actually draws a chart.
 const ChartRenderer = defineAsyncComponent(() => import('@/components/dashboard/ChartRenderer.vue'));
 
-const isChart = computed(() => ['bar', 'line', 'area', 'pie'].includes(props.visualization.type));
+const isChart = computed(() =>
+    ['bar', 'hbar', 'line', 'area', 'pie', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'].includes(props.visualization.type),
+);
+// Only charts that draw one series take a colour of their own; the rest use the whole palette.
+const canPickColor = computed(() => props.canStyle === true && props.palette !== undefined && SINGLE_COLOR_TYPES.includes(props.visualization.type));
 const partialPeriod = computed(() => isChart.value && props.result !== undefined && hasPartialPeriod(props.visualization, props.result));
 // Filters that belong to this visualization only (for example a KPI about last month) ignore the page period.
 const ownFilters = computed(() => props.visualization.query.filters.map(describeFilter).join(' · '));
@@ -50,7 +61,13 @@ async function downloadImage() {
 
     try {
         const { renderChartImage } = await import('@/lib/echarts');
-        const chart = renderChartImage(props.visualization, props.result, { width: 1400, height: 720, theme: LIGHT_CHART_THEME, pixelRatio: 2 });
+        const chart = renderChartImage(props.visualization, props.result, {
+            width: 1400,
+            height: 720,
+            theme: lightThemeFor(props.palette),
+            accent: props.accent,
+            pixelRatio: 2,
+        });
         const framed = await composeImage(chart, {
             title: props.visualization.title,
             subtitle: subtitle.value,
@@ -86,7 +103,8 @@ const unregister = registerPrintPreparer(async () => {
     printImage.value = renderChartImage(props.visualization, props.result, {
         width: Math.round((1100 * columns) / 12),
         height: Math.max(240, props.visualization.layout.height * 50),
-        theme: LIGHT_CHART_THEME,
+        theme: lightThemeFor(props.palette),
+        accent: props.accent,
         pixelRatio: 2,
     });
     await nextTick();
@@ -105,6 +123,13 @@ onBeforeUnmount(unregister);
                 <p v-if="ownFilters" class="mt-0.5 truncate text-xs text-muted-foreground" :title="ownFilters">{{ ownFilters }}</p>
             </div>
             <div v-if="visualization.type !== 'kpi'" class="flex shrink-0 items-center gap-1">
+                <ChartColorMenu
+                    v-if="canPickColor && palette && isChart"
+                    :title="visualization.title"
+                    :palette="palette"
+                    :selected="accent ?? 0"
+                    @select="(slot) => emit('color', slot)"
+                />
                 <component :is="visualizationIcons[visualization.type]" class="size-4 text-muted-foreground" aria-hidden="true" />
                 <DropdownMenu v-if="canExport">
                     <DropdownMenuTrigger as-child>
@@ -142,7 +167,7 @@ onBeforeUnmount(unregister);
             <template v-else-if="isChart">
                 <!-- The live canvas is for the screen; print swaps it for a static light-theme image. -->
                 <div :class="['h-72 flex-none lg:h-auto lg:min-h-0 lg:flex-1', printImage ? 'print:hidden' : '']">
-                    <ChartRenderer :visualization="visualization" :result="result" />
+                    <ChartRenderer :visualization="visualization" :result="result" :palette="palette" :accent="accent" />
                 </div>
                 <img v-if="printImage" ref="printImg" :src="printImage" alt="" class="hidden h-auto w-full print:block" />
                 <p v-if="partialPeriod" class="mt-2 text-xs text-muted-foreground">* Mes en curso: el último punto aún está incompleto.</p>

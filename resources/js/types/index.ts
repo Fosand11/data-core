@@ -44,7 +44,22 @@ export interface DashboardSummary {
 
 export type DashboardStatus = 'queued' | 'generating' | 'ready' | 'failed' | 'archived';
 export type DashboardGenerationStatus = 'queued' | 'processing' | 'completed' | 'failed';
-export type DashboardVisualizationType = 'kpi' | 'bar' | 'line' | 'area' | 'pie' | 'table';
+export type DashboardVisualizationType =
+    'kpi' | 'bar' | 'hbar' | 'line' | 'area' | 'pie' | 'funnel' | 'treemap' | 'radar' | 'scatter' | 'gauge' | 'table';
+
+/** One of the colour palettes a dashboard can be drawn with: six colours, for light and dark. */
+export interface ChartPaletteOption {
+    id: string;
+    name: string;
+    light: string[];
+    dark: string[];
+}
+
+/** How a dashboard is drawn: its palette and, per visualization key, which of the palette's six colours it uses. */
+export interface DashboardAppearance {
+    palette: string;
+    colors: Record<string, number>;
+}
 
 export interface DashboardMetric {
     field: string;
@@ -79,7 +94,7 @@ export interface DashboardVisualization {
         order_by: DashboardOrder[];
         limit: number;
     };
-    display: Record<string, boolean | string | string[]>;
+    display: Record<string, boolean | number | string | string[]>;
     layout: {
         x: number;
         y: number;
@@ -89,7 +104,7 @@ export interface DashboardVisualization {
 }
 
 export interface DashboardSpec {
-    version: '1.0' | '1.1';
+    version: '1.0' | '1.1' | '1.2';
     title: string;
     description: string;
     dataset: string;
@@ -134,6 +149,7 @@ export interface DashboardDetail extends DashboardSummary {
     provider: string | null;
     spec_version: string | null;
     dashboard_spec: DashboardSpec | null;
+    appearance: DashboardAppearance;
     can: { update: boolean; duplicate: boolean; delete: boolean; retry: boolean; refine: boolean };
     error_message: string | null;
     generation_started_at: string | null;
@@ -183,6 +199,9 @@ export interface ExportContext {
     periodLabel: string;
     /** The data's name for footers and covers; "Datos de ejemplo" when unset. */
     datasetName?: string;
+    /** The dashboard's palette (light colours) and per-chart colour choices, so exports match the screen. */
+    palette?: ChartPaletteOption;
+    colors?: Record<string, number>;
 }
 
 export interface SharedData extends Record<string, unknown> {

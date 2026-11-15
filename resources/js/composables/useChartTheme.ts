@@ -1,4 +1,5 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import type { ChartPaletteOption } from '@/types';
+import { computed, onBeforeUnmount, onMounted, ref, toValue, type MaybeRefOrGetter } from 'vue';
 
 export interface ChartTheme {
     /** Categorical slots in their validated, fixed order. */
@@ -26,6 +27,14 @@ export const LIGHT_CHART_THEME: ChartTheme = {
 
 const FALLBACK = LIGHT_CHART_THEME;
 
+/**
+ * The light theme drawn with a dashboard's palette. Exports and print use it, so a file
+ * carries the colours the author chose whatever theme they were viewing.
+ */
+export function lightThemeFor(palette?: ChartPaletteOption): ChartTheme {
+    return palette ? { ...LIGHT_CHART_THEME, series: palette.light } : LIGHT_CHART_THEME;
+}
+
 /** `221 39% 11%` (shadcn style triplet) -> `hsl(221, 39%, 11%)`, which canvas color parsers accept. */
 const hsl = (triplet: string, fallback: string): string => (triplet ? `hsl(${triplet.trim().split(/\s+/).join(', ')})` : fallback);
 
@@ -42,20 +51,32 @@ function readTheme(): ChartTheme {
     };
 }
 
-/** Chart colors read from the design tokens; re-read whenever the `dark` class toggles. */
-export function useChartTheme() {
-    const theme = ref<ChartTheme>(FALLBACK);
+/**
+ * Chart colors read from the design tokens; re-read whenever the `dark` class toggles. A
+ * dashboard's palette, when it has one, replaces the six series colours (its light or
+ * dark version, following the theme) and leaves surface, text and grid to the tokens.
+ */
+export function useChartTheme(palette?: MaybeRefOrGetter<ChartPaletteOption | undefined>) {
+    const base = ref<ChartTheme>(FALLBACK);
+    const dark = ref(false);
     let observer: MutationObserver | undefined;
 
+    const refresh = () => {
+        base.value = readTheme();
+        dark.value = document.documentElement.classList.contains('dark');
+    };
+
     onMounted(() => {
-        theme.value = readTheme();
-        observer = new MutationObserver(() => {
-            theme.value = readTheme();
-        });
+        refresh();
+        observer = new MutationObserver(refresh);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     });
 
     onBeforeUnmount(() => observer?.disconnect());
 
-    return theme;
+    return computed<ChartTheme>(() => {
+        const chosen = toValue(palette);
+
+        return chosen ? { ...base.value, series: dark.value ? chosen.dark : chosen.light } : base.value;
+    });
 }
