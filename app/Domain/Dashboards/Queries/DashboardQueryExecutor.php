@@ -2,11 +2,15 @@
 
 namespace App\Domain\Dashboards\Queries;
 
+use App\Domain\Ai\Catalogs\DatasetCatalog;
 use App\Domain\Ai\Catalogs\DemoSalesDatasetCatalog;
+use App\Domain\Ai\Catalogs\UploadedDatasetCatalog;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Validation\DashboardSpecValidator;
 use App\Domain\Dashboards\Enums\DashboardPeriod;
+use App\Domain\Dashboards\Models\DatasetRow;
 use App\Domain\Dashboards\Models\DemoSale;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Models\Tenant;
 use Carbon\CarbonImmutable;
@@ -35,7 +39,7 @@ final class DashboardQueryExecutor
     public function __construct(
         private readonly CurrentTenant $currentTenant,
         private readonly DashboardSpecValidator $validator,
-        private readonly DemoSalesDatasetCatalog $catalog,
+        private readonly DatasetCatalogResolver $catalogs,
     ) {}
 
     /**
@@ -43,21 +47,26 @@ final class DashboardQueryExecutor
      */
     public function execute(DashboardSpec $spec, DashboardPeriod $period = DashboardPeriod::Spec): array
     {
-        // The stored definition is untrusted until proven otherwise.
-        $definition = $this->validator->validate($spec)->toArray();
         $tenant = $this->currentTenant->require();
+        // The dataset comes from the spec but is resolved through the tenant-scoped
+        // resolver, so a key of another organization is simply "not available". A spec
+        // with no usable key falls back to the demo catalog and fails validation below.
+        $datasetKey = $spec->toArray()['dataset'] ?? null;
+        $catalog = is_string($datasetKey) ? $this->catalogs->forKey($datasetKey) : new DemoSalesDatasetCatalog;
+        // The stored definition is untrusted until proven otherwise.
+        $definition = $this->validator->forCatalog($catalog)->validate($spec)->toArray();
         $now = CarbonImmutable::now();
         $range = $period->range($now);
 
         // A chosen period replaces the dashboard's own date filters; filters on
         // other fields, and date filters inside a single visualization, stay.
         $globalFilters = $period->overridesSpec()
-            ? $this->withoutDateFilters($definition['global_filters'])
+            ? $this->withoutDateFilters($definition['global_filters'], $catalog)
             : $definition['global_filters'];
         $results = [];
 
         foreach ($definition['visualizations'] as $visualization) {
-            $result = $this->run($tenant, $visualization['query'], $globalFilters, $range);
+            $result = $this->run($tenant, $catalog, $visualization['query'], $globalFilters, $range);
             // The month still in progress is incomplete; the UI marks it as such.
             $result['meta'] = ['current_month' => $now->format('Y-m')];
             $results[$visualization['key']] = $result;
@@ -72,16 +81,19 @@ final class DashboardQueryExecutor
      * @param  array{0: CarbonImmutable, 1: CarbonImmutable}|null  $range
      * @return array{columns: list<array<string, mixed>>, rows: list<array<string, mixed>>}
      */
-    private function run(Tenant $tenant, array $query, array $globalFilters, ?array $range = null): array
+    private function run(Tenant $tenant, DatasetCatalog $catalog, array $query, array $globalFilters, ?array $range = null): array
     {
-        $builder = DemoSale::query()->forTenant($tenant);
+        $builder = $this->source($catalog)->forTenant($tenant);
 
         foreach ([...$globalFilters, ...$query['filters']] as $filter) {
-            $this->applyFilter($builder, $filter);
+            $this->applyFilter($builder, $catalog, $filter);
         }
 
-        if ($range !== null) {
-            $this->whereHalfOpen($builder, $this->catalog->dateField(), $range[0], $range[1]);
+        $dateField = $catalog->dateField();
+
+        // A dataset with no date column has nothing a period could apply to.
+        if ($range !== null && $dateField !== null) {
+            $this->whereHalfOpen($builder, $catalog->column($dateField), $range[0], $range[1]);
         }
 
         $grammar = $builder->getQuery()->getGrammar();
@@ -92,21 +104,21 @@ final class DashboardQueryExecutor
 
         foreach ($query['dimensions'] as $dimension) {
             $field = $dimension['field'];
-            $expression = $this->dimensionExpression($builder, $field);
+            $expression = $this->dimensionExpression($builder, $catalog, $field);
             $dimensionExpressions[$field] = $expression;
             $selects[] = $expression.' as '.$grammar->wrap($field);
             $groups[] = $expression;
             $columns[] = [
                 'key' => $field,
                 'role' => 'dimension',
-                'type' => $this->catalog->typeOf($field) === 'datetime' ? 'month' : $this->catalog->typeOf($field),
+                'type' => $catalog->typeOf($field) === 'datetime' ? 'month' : $catalog->typeOf($field),
                 'format' => null,
             ];
         }
 
         foreach ($query['metrics'] as $metric) {
             $selects[] = self::AGGREGATIONS[$metric['aggregation']]
-                .'('.$grammar->wrap($this->column($metric['field'])).') as '.$grammar->wrap($metric['alias']);
+                .'('.$grammar->wrap($catalog->column($metric['field'])).') as '.$grammar->wrap($metric['alias']);
             $columns[] = [
                 'key' => $metric['alias'],
                 'role' => 'metric',
@@ -121,7 +133,7 @@ final class DashboardQueryExecutor
             $builder->groupByRaw(implode(', ', $groups));
         }
 
-        $this->applyOrdering($builder, $query, $dimensionExpressions);
+        $this->applyOrdering($builder, $catalog, $query, $dimensionExpressions);
         $builder->limit((int) $query['limit']);
 
         $metricsByAlias = [];
@@ -131,7 +143,7 @@ final class DashboardQueryExecutor
         }
 
         $rows = $builder->toBase()->get()
-            ->map(fn (object $row): array => $this->normalizeRow((array) $row, $metricsByAlias))
+            ->map(fn (object $row): array => $this->normalizeRow((array) $row, $catalog, $metricsByAlias))
             ->values()
             ->all();
 
@@ -142,11 +154,11 @@ final class DashboardQueryExecutor
      * @param  list<array<string, mixed>>  $filters
      * @return list<array<string, mixed>>
      */
-    private function withoutDateFilters(array $filters): array
+    private function withoutDateFilters(array $filters, DatasetCatalog $catalog): array
     {
         return array_values(array_filter(
             $filters,
-            fn (array $filter): bool => $this->catalog->typeOf($filter['field']) !== 'datetime',
+            fn (array $filter): bool => $catalog->typeOf($filter['field']) !== 'datetime',
         ));
     }
 
@@ -155,7 +167,7 @@ final class DashboardQueryExecutor
      * @param  array<string, mixed>  $query
      * @param  array<string, string>  $dimensionExpressions
      */
-    private function applyOrdering(Builder $builder, array $query, array $dimensionExpressions): void
+    private function applyOrdering(Builder $builder, DatasetCatalog $catalog, array $query, array $dimensionExpressions): void
     {
         $grammar = $builder->getQuery()->getGrammar();
 
@@ -167,7 +179,7 @@ final class DashboardQueryExecutor
         // Trends read left to right: default to chronological order.
         if ($query['order_by'] === []) {
             foreach ($query['dimensions'] as $dimension) {
-                if ($this->catalog->typeOf($dimension['field']) === 'datetime') {
+                if ($catalog->typeOf($dimension['field']) === 'datetime') {
                     $builder->orderByRaw($dimensionExpressions[$dimension['field']].' asc');
                 }
             }
@@ -179,7 +191,7 @@ final class DashboardQueryExecutor
      * @param  array<string, array<string, mixed>>  $metricsByAlias
      * @return array<string, mixed>
      */
-    private function normalizeRow(array $row, array $metricsByAlias): array
+    private function normalizeRow(array $row, DatasetCatalog $catalog, array $metricsByAlias): array
     {
         foreach ($metricsByAlias as $alias => $metric) {
             $value = $row[$alias] ?? null;
@@ -188,7 +200,7 @@ final class DashboardQueryExecutor
                 continue;
             }
 
-            $isNumeric = $this->catalog->typeOf($metric['field']) === 'numeric';
+            $isNumeric = $catalog->typeOf($metric['field']) === 'numeric';
 
             $row[$alias] = match (true) {
                 $metric['aggregation'] === 'count' => (int) $value,
@@ -201,25 +213,26 @@ final class DashboardQueryExecutor
     }
 
     /**
-     * Resolves a field name to its column using only the catalog allowlist.
+     * The table a dataset's rows live in. Both are tenant-scoped models; the uploaded
+     * one is further limited to its own dataset.
+     *
+     * @return Builder<DemoSale>|Builder<DatasetRow>
      */
-    private function column(string $field): string
+    private function source(DatasetCatalog $catalog): Builder
     {
-        if (! $this->catalog->hasField($field)) {
-            throw new LogicException('Field is not part of the approved dataset catalog.');
-        }
-
-        return $field;
+        return $catalog instanceof UploadedDatasetCatalog
+            ? DatasetRow::query()->where('dataset_id', $catalog->datasetId())
+            : DemoSale::query();
     }
 
     /**
      * @param  Builder<DemoSale>  $builder
      */
-    private function dimensionExpression(Builder $builder, string $field): string
+    private function dimensionExpression(Builder $builder, DatasetCatalog $catalog, string $field): string
     {
-        $wrapped = $builder->getQuery()->getGrammar()->wrap($this->column($field));
+        $wrapped = $builder->getQuery()->getGrammar()->wrap($catalog->column($field));
 
-        if ($this->catalog->typeOf($field) !== 'datetime') {
+        if ($catalog->typeOf($field) !== 'datetime') {
             return $wrapped;
         }
 
@@ -236,10 +249,10 @@ final class DashboardQueryExecutor
      * @param  Builder<DemoSale>  $builder
      * @param  array<string, mixed>  $filter
      */
-    private function applyFilter(Builder $builder, array $filter): void
+    private function applyFilter(Builder $builder, DatasetCatalog $catalog, array $filter): void
     {
-        $column = $this->column($filter['field']);
-        $type = (string) $this->catalog->typeOf($column);
+        $column = $catalog->column($filter['field']);
+        $type = (string) $catalog->typeOf($filter['field']);
         $value = $filter['value'];
 
         switch ($filter['operator']) {

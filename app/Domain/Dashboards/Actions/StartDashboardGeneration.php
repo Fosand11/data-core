@@ -7,11 +7,13 @@ use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
 use App\Domain\Dashboards\Enums\DashboardStatus;
 use App\Domain\Dashboards\Jobs\GenerateDashboardJob;
 use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final readonly class StartDashboardGeneration
 {
@@ -20,17 +22,26 @@ final readonly class StartDashboardGeneration
         private DashboardGenerator $generator,
     ) {}
 
-    public function execute(User $user, string $prompt): Dashboard
+    public function execute(User $user, string $prompt, ?Dataset $dataset = null): Dashboard
     {
         Gate::forUser($user)->authorize('create', Dashboard::class);
+
+        if ($dataset !== null) {
+            Gate::forUser($user)->authorize('view', $dataset);
+
+            if (! $dataset->isReady()) {
+                throw ValidationException::withMessages(['dataset_id' => 'Ese conjunto de datos aún no está listo.']);
+            }
+        }
 
         $tenant = $this->currentTenant->require();
         $normalizedPrompt = trim($prompt);
         $provider = $this->generator->provider();
 
-        [$dashboard, $generation] = DB::transaction(function () use ($tenant, $user, $normalizedPrompt, $provider): array {
+        [$dashboard, $generation] = DB::transaction(function () use ($tenant, $user, $normalizedPrompt, $provider, $dataset): array {
             $dashboard = $tenant->dashboards()->create([
                 'created_by' => $user->getKey(),
+                'dataset_id' => $dataset?->getKey(),
                 'title' => Str::limit($normalizedPrompt, 120, ''),
                 'description' => null,
                 'original_prompt' => $normalizedPrompt,

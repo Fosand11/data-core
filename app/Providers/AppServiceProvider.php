@@ -10,8 +10,10 @@ use App\Domain\Ai\Providers\OpenAiDashboardGenerator;
 use App\Domain\Ai\Providers\UnsupportedDashboardGenerator;
 use App\Domain\Ai\Schemas\DashboardSpecSchema;
 use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Policies\DashboardPolicy;
+use App\Domain\Dashboards\Policies\DatasetPolicy;
 use App\Domain\Dashboards\Policies\DemoSalePolicy;
 use App\Domain\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -67,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::policy(Dashboard::class, DashboardPolicy::class);
+        Gate::policy(Dataset::class, DatasetPolicy::class);
         Gate::policy(DemoSale::class, DemoSalePolicy::class);
 
         RateLimiter::for('dashboard-generation', function (Request $request): array {

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Ai\Validation;
 
+use App\Domain\Ai\Catalogs\DatasetCatalog;
 use App\Domain\Ai\Catalogs\DemoSalesDatasetCatalog;
 use App\Domain\Ai\Data\DashboardSpec;
 use App\Domain\Ai\Exceptions\InvalidDashboardSpecException;
@@ -42,8 +43,17 @@ final class DashboardSpecValidator
     private const FORMATS = ['currency', 'number', 'percent', 'integer'];
 
     public function __construct(
-        private readonly DemoSalesDatasetCatalog $catalog = new DemoSalesDatasetCatalog,
+        private readonly DatasetCatalog $catalog = new DemoSalesDatasetCatalog,
     ) {}
+
+    /**
+     * A validator for another dataset's catalog. Validators are immutable, so this
+     * returns a new one instead of changing this one.
+     */
+    public function forCatalog(DatasetCatalog $catalog): self
+    {
+        return new self($catalog);
+    }
 
     public function validate(DashboardSpec $spec): DashboardSpec
     {
@@ -68,7 +78,7 @@ final class DashboardSpecValidator
         $this->assertText($definition['description'], '$.description', 0, 500);
         $this->assertIdentifier($definition['dataset'], '$.dataset', 64, false);
 
-        if ($definition['dataset'] !== DemoSalesDatasetCatalog::DATASET) {
+        if ($definition['dataset'] !== $this->catalog->dataset()) {
             $this->fail('$.dataset is not available in the approved dataset catalog.');
         }
 
