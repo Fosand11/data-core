@@ -173,6 +173,24 @@ flowchart LR
   pregunta sobre el producto nunca se convierte en un dashboard. Nada de esto
   consume el límite de generaciones.
 
+## Privacidad y seguridad
+
+- **Política de privacidad** en `/privacidad`, generada a partir de la configuración real
+  (`config/privacy.php`: quién trata los datos, plazos de conservación, duración de la sesión), de modo
+  que no puede decir algo que el código ya no hace. Registrarse exige aceptarla y se guarda la versión y
+  la fecha aceptadas. El correo de contacto sale de `PRIVACY_CONTACT_EMAIL`, nunca del repositorio.
+- **Derecho al olvido real**: «Eliminar cuenta» borra la organización y todo lo que contiene (archivos
+  pendientes, conjuntos de datos y sus filas, dashboards, versiones, historial) y no toca a nadie más. Si la
+  organización tiene otras personas, continúa sin ti y el miembro más antiguo pasa a ser dueño. Está
+  cubierto por pruebas, incluidas pruebas de mutación del borrado.
+- **Sin terceros en el navegador**: la tipografía se sirve desde la propia app (`@fontsource-variable/inter`),
+  así que ninguna CDN recibe la IP de los visitantes. La única llamada externa es de servidor a servidor.
+- **Cabeceras de seguridad** (`SecurityHeaders`): HSTS, CSP con *nonce* que solo permite los scripts de la app
+  (`SECURITY_CSP=enforce|report-only|off`), sin *framing*, sin *sniffing* y permisos de dispositivo denegados.
+- **Seguridad continua**: Dependabot semanal (Composer, npm y Actions), un flujo `security` con
+  `composer audit`, `pnpm audit` y CodeQL en cada cambio y cada lunes, `SECURITY.md` con el canal de reporte
+  privado y `/.well-known/security.txt` (una prueba falla antes de que caduque).
+
 ## Arquitectura en breve
 
 ```text
@@ -310,6 +328,9 @@ contenido fijo.
   en memoria, lo que permite los límites de tamaño sin riesgo para el servidor.
 
 ## Dependencias del frontend añadidas con justificación
+
+- `@fontsource-variable/inter`: servir la tipografía desde la propia aplicación en vez de pedirla a una CDN
+  (que recibiría la IP de cada visitante). Solo son archivos de fuente, sin scripts de instalación.
 
 - `echarts` y `vue-echarts`: el framework no incluye gráficas. ECharts cubre los
   tipos del contrato (barras, línea, área, circular, embudo, treemap, radar,

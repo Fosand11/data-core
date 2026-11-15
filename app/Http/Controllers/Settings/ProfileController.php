@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Domain\Tenancy\Actions\DeleteAccount;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -41,9 +42,9 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete the user's profile.
+     * Delete the user's account and the organization data that is only theirs.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, DeleteAccount $deleteAccount): RedirectResponse
     {
         $request->validate([
             'password' => ['required', 'current_password'],
@@ -53,7 +54,8 @@ class ProfileController extends Controller
 
         Auth::logout();
 
-        $user->delete();
+        // The person and everything only they had (their organization, datasets, dashboards, files).
+        $deleteAccount->execute($user);
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

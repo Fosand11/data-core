@@ -91,6 +91,7 @@ const features = [
                 <span class="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span>© {{ new Date().getFullYear() }} {{ appName() }}</span>
                     <StudioCredit />
+                    <Link :href="route('privacy')" class="hover:text-foreground hover:underline">Privacidad</Link>
                 </span>
                 <span>Laravel · Vue · ECharts · Gemini</span>
             </div>

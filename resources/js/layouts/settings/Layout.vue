@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { appName } from '@/lib/brand';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Fingerprint, Palette, UserRound } from 'lucide-vue-next';
+import { Fingerprint, Palette, ShieldCheck, UserRound } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const sidebarNavItems = [
@@ -23,6 +23,12 @@ const sidebarNavItems = [
         href: '/settings/appearance',
         icon: Palette,
     },
+    {
+        title: 'Privacidad',
+        description: 'Cómo tratamos tus datos',
+        href: '/privacidad',
+        icon: ShieldCheck,
+    },
 ];
 
 const page = usePage();
@@ -40,7 +46,7 @@ const currentPath = computed(() => page.url.split('?')[0]);
 
         <div class="mt-8 grid gap-8 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-12">
             <aside class="motion-reveal-delayed">
-                <nav class="grid gap-2 sm:grid-cols-3 lg:sticky lg:top-24 lg:grid-cols-1" aria-label="Configuración de cuenta">
+                <nav class="grid gap-2 sm:grid-cols-2 lg:sticky lg:top-24 lg:grid-cols-1" aria-label="Configuración de cuenta">
                     <Link
                         v-for="item in sidebarNavItems"
                         :key="item.href"

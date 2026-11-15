@@ -15,7 +15,7 @@ class RegisterTenantOwner
     public function __construct(private readonly SeedDemoSales $seedDemoSales) {}
 
     /**
-     * @param  array{name: string, email: string, password: string}  $attributes
+     * @param  array{name: string, email: string, password: string, privacy?: mixed}  $attributes
      */
     public function execute(array $attributes): User
     {
@@ -24,6 +24,9 @@ class RegisterTenantOwner
                 'name' => $attributes['name'],
                 'email' => $attributes['email'],
                 'password' => Hash::make($attributes['password']),
+                // Registering is only possible by accepting the policy: keep what was accepted and when.
+                'privacy_accepted_at' => now(),
+                'privacy_policy_version' => (string) config('privacy.version'),
             ]);
 
             $tenantName = $attributes['name'].' Organization';

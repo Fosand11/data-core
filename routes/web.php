@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardRefinementController;
 use App\Http\Controllers\DashboardSearchController;
 use App\Http\Controllers\DatasetController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\PrivacyPolicyController;
 use App\Http\Controllers\Tenancy\SelectTenantController;
 use App\Http\Middleware\AnswerHelpQuestions;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('health', HealthController::class)->name('health');
+Route::get('privacidad', PrivacyPolicyController::class)->name('privacy');
 
 Route::middleware(['auth', 'verified', 'current_tenant'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');

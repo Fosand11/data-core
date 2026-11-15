@@ -68,6 +68,7 @@ class DemoSalesTenancyTest extends TestCase
             'email' => 'seeded@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'privacy' => true,
         ])->assertRedirect();
 
         $this->assertSame(600, DemoSale::withoutTenantScope()->count());
@@ -83,6 +84,7 @@ class DemoSalesTenancyTest extends TestCase
             'email' => 'empty@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'privacy' => true,
         ])->assertRedirect();
 
         $this->assertSame(0, DemoSale::withoutTenantScope()->count());

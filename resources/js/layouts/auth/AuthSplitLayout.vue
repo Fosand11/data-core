@@ -26,7 +26,10 @@ defineProps<{
                 <slot />
             </div>
 
-            <p class="text-center text-xs text-muted-foreground lg:text-left">© {{ new Date().getFullYear() }} {{ appName() }}</p>
+            <p class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground lg:justify-start">
+                <span>© {{ new Date().getFullYear() }} {{ appName() }}</span>
+                <a :href="route('privacy')" target="_blank" rel="noopener" class="hover:text-foreground hover:underline">Política de privacidad</a>
+            </p>
         </main>
 
         <AuthVisualPanel :title="promoTitle" />

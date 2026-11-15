@@ -137,6 +137,14 @@ const onDrop = (event: DragEvent) => {
                     <ShieldCheck class="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                     <span>La IA solo recibe los nombres de tus columnas, nunca tus filas. Tus datos son privados de tu organización.</span>
                 </p>
+                <p class="mt-2 px-1 text-sm text-muted-foreground">
+                    Esta es una demostración: no subas datos sensibles (salud, financieros, contraseñas, documentos de identidad) ni información de
+                    terceros que no tengas derecho a tratar. El archivo original se elimina al terminar la importación y puedes borrar tus datos
+                    cuando quieras.
+                    <a :href="route('privacy')" target="_blank" rel="noopener" class="font-medium text-primary hover:underline"
+                        >Política de privacidad</a
+                    >
+                </p>
             </section>
 
             <section class="motion-reveal-late mt-10" aria-labelledby="datasets-title">
