@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Ai\Catalogs\DemoSalesDatasetCatalog;
+use App\Domain\Ai\Catalogs\DatasetCatalog;
 use App\Domain\Ai\Contracts\DashboardGenerator;
 use App\Domain\Ai\Contracts\ModelAwareDashboardGenerator;
 use App\Domain\Ai\Data\DashboardSpec;
@@ -14,14 +14,17 @@ use App\Domain\Dashboards\Enums\DashboardGenerationKind;
 use App\Domain\Dashboards\Enums\DashboardGenerationStatus;
 use App\Domain\Dashboards\Enums\DashboardPeriod;
 use App\Domain\Dashboards\Enums\DashboardStatus;
+use App\Domain\Dashboards\Enums\DatasetStatus;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
+use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Queries\DashboardQueryExecutor;
 use App\Domain\Dashboards\Support\DashboardVersions;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Tenancy\CurrentTenant;
-use App\Domain\Tenancy\Enums\TenantStatus;
 use App\Domain\Tenancy\Models\Tenant;
+use App\Http\Controllers\Concerns\SharesNavigationProps;
 use App\Http\Requests\Dashboards\StoreDashboardRequest;
 use App\Http\Requests\Dashboards\UpdateDashboardRequest;
 use App\Http\Resources\DashboardSummaryResource;
@@ -35,6 +38,8 @@ use Inertia\Response;
 
 class DashboardManagementController extends Controller
 {
+    use SharesNavigationProps;
+
     public function __construct(
         private readonly CurrentTenant $currentTenant,
         private readonly DashboardGenerator $generator,
@@ -69,6 +74,7 @@ class DashboardManagementController extends Controller
         return Inertia::render('dashboards/Create', [
             ...$this->navigationProps($request, $tenant),
             'initialPrompt' => is_string($prompt) && mb_strlen($prompt) <= 2000 ? trim($prompt) : '',
+            ...$this->datasetChoices($request),
             'provider' => $this->generator->provider(),
             'providerModel' => $this->generator instanceof ModelAwareDashboardGenerator
                 ? $this->generator->model()
@@ -78,20 +84,37 @@ class DashboardManagementController extends Controller
 
     public function store(StoreDashboardRequest $request, StartDashboardGeneration $startGeneration): RedirectResponse
     {
+        $datasetId = $request->validated('dataset_id');
+        // Looked up through the tenant-scoped model, on top of the request's own check.
+        $dataset = is_string($datasetId) ? Dataset::query()->findOrFail($datasetId) : null;
+
         $dashboard = $startGeneration->execute(
             $request->user(),
             $request->validated('prompt'),
+            $dataset,
         );
 
         return to_route('dashboards.show', $dashboard);
     }
 
-    public function show(Request $request, Dashboard $dashboard, DashboardQueryExecutor $executor, DemoSalesDatasetCatalog $catalog, DashboardVersions $versions): Response
+    public function show(Request $request, Dashboard $dashboard, DashboardQueryExecutor $executor, DatasetCatalogResolver $catalogs, DashboardVersions $versions): Response
     {
         Gate::authorize('view', $dashboard);
         $tenant = $this->currentTenant->require();
         $period = DashboardPeriod::tryFrom((string) $request->query('period', '')) ?? DashboardPeriod::Spec;
-        $dashboard->load(['creator:id,name', 'generations' => fn ($query) => $query->where('kind', DashboardGenerationKind::Create->value)->latest()]);
+
+        try {
+            $catalog = $catalogs->forDashboard($dashboard);
+        } catch (InvalidDashboardSpecException) {
+            $catalog = null;
+        }
+
+        // A dataset with no date column has nothing a period could filter.
+        if ($catalog?->dateField() === null) {
+            $period = DashboardPeriod::Spec;
+        }
+
+        $dashboard->load(['dataset:id,name', 'creator:id,name', 'generations' => fn ($query) => $query->where('kind', DashboardGenerationKind::Create->value)->latest()]);
         $dashboard->loadExists(['pinnedBy as is_pinned' => fn ($pins) => $pins->where('users.id', $request->user()->getKey())]);
         $latestGeneration = $dashboard->generations->first();
         $refinement = Gate::allows('refine', $dashboard)
@@ -103,6 +126,7 @@ class DashboardManagementController extends Controller
             'dashboard' => [
                 ...DashboardSummaryResource::make($dashboard)->resolve(),
                 'description' => $dashboard->description,
+                'dataset' => $dashboard->dataset === null ? null : ['id' => $dashboard->dataset->getKey(), 'name' => $dashboard->dataset->name],
                 'original_prompt' => $dashboard->original_prompt,
                 'provider' => $dashboard->provider,
                 'spec_version' => $dashboard->spec_version,
@@ -132,7 +156,7 @@ class DashboardManagementController extends Controller
             'refinement' => $refinement === null ? null : $this->refinementPayload($refinement, $versions->currentNumber($dashboard)),
             'versions' => $this->versionsPayload($dashboard),
             'visualizationData' => fn (): ?array => $this->visualizationData($dashboard, $executor, $period),
-            'proposalData' => fn (): ?array => $this->proposalData($refinement, $executor, $period),
+            'proposalData' => fn (): ?array => $this->proposalData($refinement, $executor, $period, $dashboard),
         ]);
     }
 
@@ -191,13 +215,13 @@ class DashboardManagementController extends Controller
     /**
      * @return array<string, mixed>|null
      */
-    private function proposalData(?DashboardGeneration $refinement, DashboardQueryExecutor $executor, DashboardPeriod $period): ?array
+    private function proposalData(?DashboardGeneration $refinement, DashboardQueryExecutor $executor, DashboardPeriod $period, Dashboard $dashboard): ?array
     {
         if ($refinement === null || $refinement->status !== DashboardGenerationStatus::Completed || ! is_array($refinement->validated_spec)) {
             return null;
         }
 
-        Gate::authorize('viewAny', DemoSale::class);
+        $this->authorizeData($dashboard);
 
         try {
             return $executor->execute(DashboardSpec::fromArray($refinement->validated_spec), $period);
@@ -209,7 +233,7 @@ class DashboardManagementController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function periodPayload(DashboardPeriod $period, DemoSalesDatasetCatalog $catalog): array
+    private function periodPayload(DashboardPeriod $period, ?DatasetCatalog $catalog): array
     {
         $range = $period->range(CarbonImmutable::now());
 
@@ -217,7 +241,7 @@ class DashboardManagementController extends Controller
             'value' => $period->value,
             'label' => $period->label(),
             'overrides_spec' => $period->overridesSpec(),
-            'date_field' => $catalog->dateField(),
+            'date_field' => $catalog?->dateField(),
             // Inclusive dates for display; the query itself uses a half-open range.
             'range' => $range === null ? null : [
                 'from' => $range[0]->toDateString(),
@@ -239,7 +263,7 @@ class DashboardManagementController extends Controller
             return null;
         }
 
-        Gate::authorize('viewAny', DemoSale::class);
+        $this->authorizeData($dashboard);
 
         try {
             return $executor->execute(DashboardSpec::fromArray($dashboard->dashboard_spec), $period);
@@ -253,27 +277,34 @@ class DashboardManagementController extends Controller
     }
 
     /**
-     * @return array<string, mixed>
+     * A dashboard's data is the demo sales or an uploaded dataset: either way the user
+     * must belong to the current organization to read it.
      */
-    private function navigationProps(Request $request, Tenant $tenant): array
+    private function authorizeData(Dashboard $dashboard): void
     {
-        $tenants = $request->user()
-            ->tenants()
-            ->where('tenants.status', TenantStatus::Active->value)
-            ->orderBy('tenants.name')
-            ->get()
-            ->map(fn (Tenant $organization): array => [
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'role' => $organization->pivot->role,
-            ]);
+        Gate::authorize('viewAny', $dashboard->dataset_id === null ? DemoSale::class : Dataset::class);
+    }
+
+    /**
+     * The datasets a new question can be about, and which one is preselected.
+     *
+     * @return array{datasets: list<array<string, mixed>>, datasetId: ?string}
+     */
+    private function datasetChoices(Request $request): array
+    {
+        $datasets = Dataset::query()
+            ->where('status', DatasetStatus::Ready->value)
+            ->orderBy('name')
+            ->get(['id', 'name', 'row_count']);
+        $requested = $request->query('dataset');
 
         return [
-            'currentTenant' => [
-                'name' => $tenant->name,
-                'slug' => $tenant->slug,
-            ],
-            'tenants' => $tenants,
+            'datasets' => $datasets->map(fn (Dataset $dataset): array => [
+                'id' => $dataset->getKey(),
+                'name' => $dataset->name,
+                'row_count' => $dataset->row_count,
+            ])->all(),
+            'datasetId' => is_string($requested) && $datasets->contains('id', $requested) ? $requested : null,
         ];
     }
 }

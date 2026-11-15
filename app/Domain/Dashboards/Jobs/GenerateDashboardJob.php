@@ -14,6 +14,7 @@ use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Dashboards\Models\DashboardVersion;
 use App\Domain\Dashboards\Support\DashboardVersions;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Dashboards\Support\ExecutionTime;
 use App\Domain\Dashboards\Support\GenerationFailure;
 use Illuminate\Bus\Queueable;
@@ -58,13 +59,17 @@ final class GenerateDashboardJob implements ShouldQueue
                 throw new UnsupportedDashboardAiDriver('The configured provider does not match the queued generation.');
             }
 
+            // The dashboard says which dataset it is built on (the demo data when none).
+            $catalog = app(DatasetCatalogResolver::class)->forDashboard(Dashboard::query()->findOrFail($generation->dashboard_id));
+
             $spec = $generator->generate(new DashboardGenerationInput(
                 tenantId: $generation->tenant_id,
                 requestedBy: (int) $generation->requested_by,
                 prompt: $generation->prompt,
+                catalog: $catalog,
             ));
 
-            $validatedSpec = $validator->validate($spec)->toArray();
+            $validatedSpec = $validator->forCatalog($catalog)->validate($spec)->toArray();
             $this->complete($validatedSpec);
         } catch (Throwable $exception) {
             $this->markFailed($exception);

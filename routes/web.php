@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardManagementController;
 use App\Http\Controllers\DashboardRefinementController;
 use App\Http\Controllers\DashboardSearchController;
+use App\Http\Controllers\DatasetController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Tenancy\SelectTenantController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,13 @@ Route::middleware(['auth', 'verified', 'current_tenant'])->group(function () {
     Route::post('dashboards/{dashboard}/versions/{number}/restore', [DashboardRefinementController::class, 'restore'])
         ->whereNumber('number')
         ->name('dashboards.versions.restore');
+    Route::get('datasets', [DatasetController::class, 'index'])->name('datasets.index');
+    Route::post('datasets', [DatasetController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('datasets.store');
+    Route::get('datasets/{dataset}', [DatasetController::class, 'show'])->name('datasets.show');
+    Route::post('datasets/{dataset}/import', [DatasetController::class, 'import'])->name('datasets.import');
+    Route::delete('datasets/{dataset}', [DatasetController::class, 'destroy'])->name('datasets.destroy');
     Route::patch('organizations/{tenant:slug}/select', SelectTenantController::class)
         ->name('tenants.select');
 });

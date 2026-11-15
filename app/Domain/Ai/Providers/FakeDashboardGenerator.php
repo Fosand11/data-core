@@ -2,6 +2,7 @@
 
 namespace App\Domain\Ai\Providers;
 
+use App\Domain\Ai\Catalogs\DatasetCatalog;
 use App\Domain\Ai\Contracts\DashboardGenerator;
 use App\Domain\Ai\Data\DashboardGenerationInput;
 use App\Domain\Ai\Data\DashboardSpec;
@@ -18,6 +19,11 @@ final class FakeDashboardGenerator implements DashboardGenerator
     {
         if ($input->isRefinement()) {
             return $this->refine($input);
+        }
+
+        // A customer's own dataset: build from the columns it really has.
+        if ($input->catalog !== null && $input->catalog->dataset() !== 'demo_sales') {
+            return $this->forDataset($input->catalog, $input->prompt);
         }
 
         $prompt = Str::lower(Str::ascii($input->prompt));
@@ -230,16 +236,69 @@ final class FakeDashboardGenerator implements DashboardGenerator
     }
 
     /**
+     * A sensible overview of any dataset, using only the columns it really has: totals,
+     * a breakdown by its first text column, a trend when it has a date, and a summary
+     * table. Deterministic, like the rest of this provider.
+     */
+    private function forDataset(DatasetCatalog $catalog, string $prompt): DashboardSpec
+    {
+        $fields = $catalog->fields();
+        $labels = $catalog->labels();
+        $label = fn (string $field): string => $labels[$field] ?? $field;
+        $numeric = array_key_first(array_filter($fields, fn (string $type): bool => $type === 'numeric'));
+        $text = array_key_first(array_filter($fields, fn (string $type): bool => $type === 'string'));
+        $date = $catalog->dateField();
+        $any = array_key_first($fields);
+
+        // An alias must never reuse one of the dataset's own field names.
+        $alias = function (string $base) use ($catalog): string {
+            while ($catalog->hasField($base)) {
+                $base .= '_m';
+            }
+
+            return $base;
+        };
+
+        $measure = $numeric ?? $any;
+        $aggregation = $numeric !== null ? 'sum' : 'count';
+        $total = $alias('m_total');
+        $records = $alias('m_records');
+        $visualizations = [];
+
+        if ($numeric !== null) {
+            $visualizations[] = $this->kpi('total', 'Total de '.$label($numeric), $numeric, 'sum', $total, 'number', 0, 0);
+        }
+
+        $visualizations[] = $this->kpi('records', 'Registros', $any, 'count', $records, 'integer', $numeric !== null ? 4 : 0, 0);
+
+        if ($text !== null) {
+            $visualizations[] = $this->chart('by_category', $label($measure).' por '.$label($text), 'bar', $text, $measure, $aggregation, $total, 0, 2, $date !== null ? 6 : 12, 4, 'desc', 'number');
+        }
+
+        if ($date !== null) {
+            $visualizations[] = $this->chart('over_time', 'Evolución mensual', 'line', $date, $measure, $aggregation, $alias('m_trend'), $text !== null ? 6 : 0, 2, $text !== null ? 6 : 12, 4, 'desc', 'number');
+        }
+
+        if ($text !== null) {
+            $visualizations[] = $this->table('summary', 'Resumen por '.$label($text), [$text], [['field' => $measure, 'aggregation' => $aggregation, 'alias' => $alias('m_value'), 'format' => 'number']], 0, 6);
+        }
+
+        $title = Str::limit(trim($prompt) !== '' ? trim($prompt) : 'Resumen de tus datos', 100, '…');
+
+        return $this->spec($title, 'Un resumen general de tus datos.', [], $visualizations, $catalog->dataset());
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $globalFilters
      * @param  list<array<string, mixed>>  $visualizations
      */
-    private function spec(string $title, string $description, array $globalFilters, array $visualizations): DashboardSpec
+    private function spec(string $title, string $description, array $globalFilters, array $visualizations, string $dataset = 'demo_sales'): DashboardSpec
     {
         return DashboardSpec::fromArray([
             'version' => '1.1',
             'title' => $title,
             'description' => $description,
-            'dataset' => 'demo_sales',
+            'dataset' => $dataset,
             'global_filters' => $globalFilters,
             'visualizations' => $visualizations,
             'layout' => ['columns' => 12],
@@ -284,13 +343,14 @@ final class FakeDashboardGenerator implements DashboardGenerator
         int $width,
         int $height,
         string $direction = 'desc',
+        string $format = 'currency',
     ): array {
         return [
             'key' => $key,
             'title' => $title,
             'type' => $type,
             'query' => [
-                'metrics' => [['field' => $metric, 'aggregation' => $aggregation, 'alias' => $alias, 'format' => 'currency']],
+                'metrics' => [['field' => $metric, 'aggregation' => $aggregation, 'alias' => $alias, 'format' => $format]],
                 'dimensions' => [['field' => $dimension]],
                 'filters' => [],
                 'order_by' => $type === 'bar' ? [['field' => $alias, 'direction' => $direction]] : [],

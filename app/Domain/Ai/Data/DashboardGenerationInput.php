@@ -2,6 +2,8 @@
 
 namespace App\Domain\Ai\Data;
 
+use App\Domain\Ai\Catalogs\DatasetCatalog;
+
 final readonly class DashboardGenerationInput
 {
     /**
@@ -12,6 +14,7 @@ final readonly class DashboardGenerationInput
         public int $requestedBy,
         public string $prompt,
         public ?array $currentSpec = null,
+        public ?DatasetCatalog $catalog = null,
     ) {}
 
     public function isRefinement(): bool

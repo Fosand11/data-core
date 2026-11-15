@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Dashboards\Enums\DatasetStatus;
 use App\Domain\Dashboards\Models\Dashboard;
+use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Tenancy\CurrentTenant;
 use App\Domain\Tenancy\Enums\TenantStatus;
 use App\Domain\Tenancy\Models\Tenant;
@@ -18,12 +20,20 @@ class DashboardController extends Controller
     {
         $tenant = $currentTenant->get();
         $dashboards = [];
+        $datasets = [];
 
         if ($tenant !== null) {
             Gate::authorize('viewAny', Dashboard::class);
             $dashboards = DashboardSummaryResource::collection(
                 $tenant->dashboards()->withPinnedState($request->user())->with('creator:id,name')->latest()->limit(12)->get(),
             )->resolve();
+            // The uploaded datasets a question on Home can be about (tenant-scoped model).
+            $datasets = Dataset::query()
+                ->where('status', DatasetStatus::Ready->value)
+                ->orderBy('name')
+                ->get(['id', 'name', 'row_count'])
+                ->map(fn (Dataset $dataset): array => ['id' => $dataset->getKey(), 'name' => $dataset->name, 'row_count' => $dataset->row_count])
+                ->all();
         }
 
         $tenants = $request->user()
@@ -44,6 +54,7 @@ class DashboardController extends Controller
             ],
             'tenants' => $tenants,
             'dashboards' => $dashboards,
+            'datasets' => $datasets,
         ]);
     }
 }

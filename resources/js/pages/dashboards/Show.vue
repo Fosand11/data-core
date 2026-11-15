@@ -117,6 +117,7 @@ const exportContext = computed<ExportContext>(() => ({
     title: props.dashboard.title,
     description: props.dashboard.description,
     periodLabel: periodCaption.value,
+    datasetName: props.dashboard.dataset?.name,
 }));
 
 const refreshing = ref(false);
@@ -200,7 +201,16 @@ onUnmounted(stopPolling);
                 <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
                     <span>{{ createdAt }}</span>
                     <span v-if="dashboard.author">{{ dashboard.author.name }}</span>
-                    <span class="inline-flex items-center gap-1.5"><Database class="size-3.5" aria-hidden="true" /> Datos de ejemplo</span>
+                    <span class="inline-flex items-center gap-1.5">
+                        <Database class="size-3.5" aria-hidden="true" />
+                        <Link
+                            v-if="dashboard.dataset"
+                            :href="route('datasets.show', { dataset: dashboard.dataset.id })"
+                            class="hover:text-foreground hover:underline print:no-underline"
+                            >{{ dashboard.dataset.name }}</Link
+                        >
+                        <template v-else>Datos de ejemplo</template>
+                    </span>
                 </div>
             </header>
 
@@ -266,7 +276,7 @@ onUnmounted(stopPolling);
                 />
 
                 <div class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <PeriodPicker class="print:hidden" :period="period" :busy="refreshing" @select="selectPeriod" />
+                    <PeriodPicker v-if="period.date_field" class="print:hidden" :period="period" :busy="refreshing" @select="selectPeriod" />
                     <p class="hidden text-sm text-muted-foreground print:block">{{ printPeriod }}</p>
                     <div v-if="visibleFilters.length" class="flex flex-wrap items-center gap-2 print:hidden" aria-label="Filtros del dashboard">
                         <StatusBadge v-for="filter in visibleFilters" :key="`${filter.field}-${filter.operator}`">

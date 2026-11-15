@@ -116,7 +116,8 @@ export interface DashboardPeriodInfo {
     value: string;
     label: string;
     overrides_spec: boolean;
-    date_field: string;
+    /** The dataset's date column, or null when it has none (a period then has nothing to filter). */
+    date_field: string | null;
     /** Inclusive dates ("YYYY-MM-DD") of the active period, or null when it is not a fixed range. */
     range: { from: string; to: string } | null;
     options: Array<{ value: string; label: string }>;
@@ -127,6 +128,8 @@ export type VisualizationData = Record<string, VisualizationResult>;
 
 export interface DashboardDetail extends DashboardSummary {
     description: string | null;
+    /** The uploaded dataset this dashboard uses; null for the built-in demo data. */
+    dataset: { id: string; name: string } | null;
     original_prompt: string | null;
     provider: string | null;
     spec_version: string | null;
@@ -178,6 +181,8 @@ export interface ExportContext {
     description: string | null;
     /** The period the numbers cover, e.g. "Trimestre anterior" or "Fecha: trimestre anterior". */
     periodLabel: string;
+    /** The data's name for footers and covers; "Datos de ejemplo" when unset. */
+    datasetName?: string;
 }
 
 export interface SharedData extends Record<string, unknown> {
@@ -207,3 +212,50 @@ export interface User {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+export type DatasetStatus = 'pending' | 'importing' | 'ready' | 'failed';
+export type DatasetColumnType = 'string' | 'numeric' | 'datetime';
+
+export interface DatasetSummary {
+    id: string;
+    name: string;
+    status: DatasetStatus;
+    source_filename: string;
+    source_type: 'csv' | 'xlsx';
+    row_count: number;
+    columns_count: number;
+    dashboards_count: number;
+    created_at: string;
+    imported_at: string | null;
+}
+
+export interface DatasetDetail extends DatasetSummary {
+    warning_count: number;
+    error_code: string | null;
+    error_message: string | null;
+}
+
+export interface DatasetColumnInfo {
+    id: string;
+    key: string;
+    label: string;
+    type: DatasetColumnType;
+    included: boolean;
+    samples: string[];
+}
+
+/** What a question can be about, besides the demo data. */
+export interface DatasetChoice {
+    id: string;
+    name: string;
+    row_count: number;
+}
+
+export interface DatasetLimits {
+    max_file_kb: number;
+    max_rows: number;
+    max_columns: number;
+    max_datasets: number;
+    /** How many columns of each type fit in one dataset. */
+    slots: Record<DatasetColumnType, number>;
+}

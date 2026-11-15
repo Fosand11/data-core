@@ -14,6 +14,7 @@ use App\Domain\Dashboards\Exceptions\RefinementProducedNoChanges;
 use App\Domain\Dashboards\Jobs\Concerns\EntersGenerationTenant;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Domain\Dashboards\Models\DashboardGeneration;
+use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Dashboards\Support\ExecutionTime;
 use App\Domain\Dashboards\Support\GenerationFailure;
 use Illuminate\Bus\Queueable;
@@ -61,11 +62,15 @@ final class RefineDashboardJob implements ShouldQueue
                 throw new UnsupportedDashboardAiDriver('The configured provider does not match the queued refinement.');
             }
 
-            $proposal = $validator->validate($generator->generate(new DashboardGenerationInput(
+            // A refinement stays on the dataset the dashboard already uses.
+            $catalog = app(DatasetCatalogResolver::class)->forKey((string) ($baseSpec['dataset'] ?? ''));
+
+            $proposal = $validator->forCatalog($catalog)->validate($generator->generate(new DashboardGenerationInput(
                 tenantId: $generation->tenant_id,
                 requestedBy: (int) $generation->requested_by,
                 prompt: $generation->prompt,
                 currentSpec: $baseSpec,
+                catalog: $catalog,
             )))->toArray();
 
             if ($this->normalize($proposal) === $this->normalize($baseSpec)) {

@@ -2,7 +2,7 @@
 import InputError from '@/components/InputError.vue';
 import { useDashboardPrompt } from '@/composables/useDashboardPrompt';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { BreadcrumbItem, CurrentTenant, TenantOption } from '@/types';
+import type { BreadcrumbItem, CurrentTenant, DatasetChoice, TenantOption } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { ArrowUp, Database, LoaderCircle, ShieldCheck } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
@@ -11,11 +11,13 @@ const props = defineProps<{
     currentTenant: CurrentTenant;
     tenants: TenantOption[];
     initialPrompt: string;
+    datasets: DatasetChoice[];
+    datasetId: string | null;
     provider: string;
     providerModel: string | null;
 }>();
 
-const { form, canSubmit, submit, handleKeydown: handlePromptKeydown } = useDashboardPrompt(props.initialPrompt);
+const { form, canSubmit, submit, handleKeydown: handlePromptKeydown } = useDashboardPrompt(props.initialPrompt, props.datasetId);
 const promptInput = ref<HTMLTextAreaElement | null>(null);
 
 const providerNames: Record<string, string> = { gemini: 'Gemini', openai: 'OpenAI', fake: 'Simulador local' };
@@ -27,6 +29,9 @@ const suggestions = [
     'Identifica productos con ventas disminuidas.',
     'Resume el rendimiento del equipo comercial.',
 ];
+
+// What the user is asking about: an uploaded dataset, or the demo data when none.
+const selectedDataset = computed(() => props.datasets.find((dataset) => dataset.id === form.dataset_id) ?? null);
 
 const fields = ['Monto', 'Región', 'Fecha', 'Producto', 'Cantidad', 'Vendedor', 'Equipo'];
 
@@ -72,6 +77,30 @@ onMounted(() => {
 
             <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start">
                 <section class="motion-reveal-delayed" aria-label="Describe tu dashboard">
+                    <div
+                        v-if="datasets.length"
+                        class="mb-3 flex flex-wrap items-center gap-2"
+                        role="radiogroup"
+                        aria-label="Datos sobre los que preguntar"
+                    >
+                        <span class="px-1 text-sm text-muted-foreground">Sobre:</span>
+                        <button
+                            v-for="option in [{ id: null, name: 'Datos de ejemplo' }, ...datasets]"
+                            :key="option.id ?? 'demo'"
+                            type="button"
+                            role="radio"
+                            :aria-checked="form.dataset_id === option.id"
+                            :class="[
+                                'rounded-full border px-3.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                form.dataset_id === option.id
+                                    ? 'border-primary bg-primary-subtle font-medium text-primary'
+                                    : 'bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                            ]"
+                            @click="form.dataset_id = option.id"
+                        >
+                            {{ option.name }}
+                        </button>
+                    </div>
                     <form class="insight-panel p-2 focus-within:border-primary/40" @submit.prevent="submit">
                         <label for="prompt" class="sr-only">Describe el dashboard que necesitas</label>
                         <textarea
@@ -123,12 +152,15 @@ onMounted(() => {
                     <div class="rounded-2xl border bg-card p-5">
                         <div class="flex items-center gap-2 text-sm font-medium text-foreground">
                             <Database class="size-4 text-primary" aria-hidden="true" />
-                            Datos de ejemplo
+                            {{ selectedDataset?.name ?? 'Datos de ejemplo' }}
                         </div>
-                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                        <p v-if="selectedDataset" class="mt-2 text-sm leading-6 text-muted-foreground">
+                            {{ selectedDataset.row_count.toLocaleString('es') }} filas de tus datos. Pregunta con los nombres de tus columnas.
+                        </p>
+                        <p v-else class="mt-2 text-sm leading-6 text-muted-foreground">
                             Ventas de los últimos 12 meses de tu organización. Puedes preguntar por:
                         </p>
-                        <ul class="mt-3 flex flex-wrap gap-1.5">
+                        <ul v-if="!selectedDataset" class="mt-3 flex flex-wrap gap-1.5">
                             <li v-for="field in fields" :key="field" class="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                                 {{ field }}
                             </li>

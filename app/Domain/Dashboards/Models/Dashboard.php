@@ -23,6 +23,7 @@ class Dashboard extends Model
 
     protected $fillable = [
         'tenant_id',
+        'dataset_id',
         'created_by',
         'title',
         'description',
@@ -42,6 +43,16 @@ class Dashboard extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * The uploaded dataset this dashboard is built on; null for the built-in demo data.
+     *
+     * @return BelongsTo<Dataset, $this>
+     */
+    public function dataset(): BelongsTo
+    {
+        return $this->belongsTo(Dataset::class);
     }
 
     /**

@@ -2,7 +2,9 @@
 
 namespace App\Domain\Ai\Catalogs;
 
-final class DemoSalesDatasetCatalog
+use LogicException;
+
+final class DemoSalesDatasetCatalog implements DatasetCatalog
 {
     public const DATASET = 'demo_sales';
 
@@ -20,12 +22,25 @@ final class DemoSalesDatasetCatalog
         'team' => 'string',
     ];
 
+    public function dataset(): string
+    {
+        return self::DATASET;
+    }
+
     /**
-     * @return array<string, string>
+     * @return array<string, string>]
      */
     public function fields(): array
     {
         return self::FIELDS;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function labels(): array
+    {
+        return [];
     }
 
     /**
@@ -44,5 +59,17 @@ final class DemoSalesDatasetCatalog
     public function typeOf(string $field): ?string
     {
         return self::FIELDS[$field] ?? null;
+    }
+
+    /**
+     * The demo table names its columns like its fields.
+     */
+    public function column(string $field): string
+    {
+        if (! $this->hasField($field)) {
+            throw new LogicException('Field is not part of the approved dataset catalog.');
+        }
+
+        return $field;
     }
 }
