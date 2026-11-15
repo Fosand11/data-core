@@ -19,6 +19,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -54,6 +55,33 @@ class HelpAssistantTest extends TestCase
             ->post(route('dashboards.store'), ['prompt' => '¿Qué visuales tienes?'])
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('assistant.kind', 'visuals');
+
+        $this->assertSame(0, Dashboard::withoutTenantScope()->count());
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function wordingsPeopleUse(): array
+    {
+        return [
+            'the wording that once created a dashboard' => ['Que tipo de graficos puedo hacer?', 'visuals'],
+            'another way to ask for the charts' => ['¿Qué gráficos puedo hacer con mis datos?', 'visuals'],
+            'a map' => ['¿Se puede hacer un mapa?', 'limits'],
+            'questions to ask' => ['¿Qué preguntas puedo hacer?', 'suggestions'],
+        ];
+    }
+
+    #[DataProvider('wordingsPeopleUse')]
+    public function test_questions_about_the_app_never_become_a_dashboard(string $prompt, string $kind): void
+    {
+        Queue::fake();
+
+        $this->actingAs($this->owner)->from(route('dashboard'))
+            ->post(route('dashboards.store'), ['prompt' => $prompt])
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('assistant.kind', $kind);
 
         $this->assertSame(0, Dashboard::withoutTenantScope()->count());
         Queue::assertNothingPushed();
