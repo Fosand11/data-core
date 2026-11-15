@@ -24,7 +24,16 @@ Pides un cambio («cambia las barras por un gráfico circular») y la IA propone
 
 ![Vista previa de un cambio propuesto por la IA](.github/images/refine.webp)
 
-### 3. Claro y oscuro, buscador y exportación
+### 3. Pregunta sobre tus propios datos (CSV y Excel)
+
+En **Datos** subes un archivo `.csv` o `.xlsx` (hasta 5 MB, 20.000 filas y 20 columnas; 5 conjuntos por organización). La app lee las primeras filas, adivina el tipo de cada columna (texto, número o fecha; entiende `1.200,50` y `1,200.50`, monedas, porcentajes y fechas día/mes/año) y te lo muestra para que corrijas nombres y tipos o quites columnas antes de importar. Después preguntas igual que con los datos de ejemplo.
+
+- **La IA solo recibe los nombres de las columnas**, nunca las filas; los nombres se tratan como datos y se sanean antes de entrar al prompt.
+- **Importación atómica en segundo plano**: o entra todo o no entra nada, y el archivo original se borra siempre al terminar.
+- **Sin SQL generado**: las filas viven en columnas tipadas de una sola tabla y el ejecutor las consulta con el mismo catálogo cerrado que los datos de ejemplo.
+- **Aislado por organización** como todo lo demás: el conjunto de datos de otra organización responde 404.
+
+### 4. Claro y oscuro, buscador y exportación
 
 ![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
 
@@ -259,6 +268,12 @@ contenido enviado para mejorar sus productos, por eso la app sólo envía tu
 solicitud y el catálogo estático (nunca filas, ids internos ni secretos) y avisa
 en la pantalla de creación. Los nombres de modelo cambian con frecuencia:
 comprueba el vigente en la documentación de Gemini antes de fijarlo.
+
+## Dependencia del backend añadida con justificación
+
+- `openspout/openspout`: el framework no lee `.xlsx`. Es una librería PHP pura (sin extensiones
+  nativas ni scripts de instalación) que lee Excel y CSV en _streaming_, sin cargar el archivo entero
+  en memoria, lo que permite los límites de tamaño sin riesgo para el servidor.
 
 ## Dependencias del frontend añadidas con justificación
 
