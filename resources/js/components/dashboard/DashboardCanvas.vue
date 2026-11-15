@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import VisualizationCard from '@/components/dashboard/VisualizationCard.vue';
-import type { DashboardSpec, DashboardVisualization, ExportContext, VisualizationData } from '@/types';
+import type { ChartPaletteOption, DashboardSpec, DashboardVisualization, ExportContext, VisualizationData } from '@/types';
 import { computed } from 'vue';
 
 const props = defineProps<{
     spec: DashboardSpec;
     data?: VisualizationData | null;
     exportContext?: ExportContext;
+    palette?: ChartPaletteOption;
+    /** Visualization key => palette slot the author chose. */
+    colors?: Record<string, number>;
+    /** Whether charts show their colour picker (people who can edit the dashboard). */
+    canStyle?: boolean;
 }>();
+
+const emit = defineEmits<{ color: [key: string, slot: number] }>();
 
 // Single column on small screens keeps reading order: top to bottom, then left to right.
 const ordered = computed(() => [...props.spec.visualizations].sort((a, b) => a.layout.y - b.layout.y || a.layout.x - b.layout.x));
@@ -30,7 +37,15 @@ const placement = (visualization: DashboardVisualization) => ({
                 :style="placement(visualization)"
                 class="min-w-0 lg:[grid-column:var(--col)] lg:[grid-row:var(--row)] print:[grid-column:var(--col)] print:[grid-row:var(--row)]"
             >
-                <VisualizationCard :visualization="visualization" :result="data?.[visualization.key]" :export-context="exportContext" />
+                <VisualizationCard
+                    :visualization="visualization"
+                    :result="data?.[visualization.key]"
+                    :export-context="exportContext"
+                    :palette="palette"
+                    :accent="colors?.[visualization.key] ?? 0"
+                    :can-style="canStyle"
+                    @color="(slot) => emit('color', visualization.key, slot)"
+                />
             </div>
         </div>
     </section>

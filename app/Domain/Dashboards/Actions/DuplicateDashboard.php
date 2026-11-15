@@ -36,6 +36,7 @@ final class DuplicateDashboard
             'status' => DashboardStatus::Ready,
             'spec_version' => $source->spec_version,
             'dashboard_spec' => $source->dashboard_spec,
+            'appearance' => $source->appearance,
             'provider' => $source->provider,
             'generation_completed_at' => now(),
         ]);

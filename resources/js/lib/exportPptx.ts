@@ -1,4 +1,4 @@
-import { LIGHT_CHART_THEME } from '@/composables/useChartTheme';
+import { lightThemeFor } from '@/composables/useChartTheme';
 import { describeChart } from '@/lib/chartOptions';
 import { formatCell, formatValue } from '@/lib/format';
 import { describeFilter, labelFor } from '@/lib/labels';
@@ -15,7 +15,8 @@ const KPIS_PER_SLIDE = 6;
 const TABLE_ROWS_PER_SLIDE = 13;
 const CHART_IMAGE = { width: 1480, height: 636 };
 
-const isChart = (visualization: DashboardVisualization) => ['bar', 'line', 'area', 'pie'].includes(visualization.type);
+const isChart = (visualization: DashboardVisualization) =>
+    ['bar', 'hbar', 'line', 'area', 'pie', 'funnel', 'treemap', 'radar', 'scatter', 'gauge'].includes(visualization.type);
 const columnTitle = (column: VisualizationColumn) => (column.type === 'month' ? 'Mes' : labelFor(column.key));
 
 /** Layout order: top to bottom, then left to right, as the dashboard reads on screen. */
@@ -158,7 +159,12 @@ export async function buildDeck(spec: DashboardSpec, data: VisualizationData, co
             slide.addText(visualization.title, { x: 0.5, y: 0.4, w: 12.33, h: 0.7, fontFace: FONT, fontSize: 28, bold: true, color: INK });
             slide.addText(subtitle, { x: 0.5, y: 1.05, w: 12.33, h: 0.4, fontFace: FONT, fontSize: 14, color: MUTED });
             slide.addImage({
-                data: renderChartImage(visualization, result, { ...CHART_IMAGE, theme: LIGHT_CHART_THEME, pixelRatio: 2 }),
+                data: renderChartImage(visualization, result, {
+                    ...CHART_IMAGE,
+                    theme: lightThemeFor(context.palette),
+                    accent: context.colors?.[visualization.key],
+                    pixelRatio: 2,
+                }),
                 x: 0.5,
                 y: 1.55,
                 w: 12.33,

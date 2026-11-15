@@ -21,6 +21,12 @@ final class ProviderSpecNormalizer
         'line' => ['x_axis', 'y_axis'],
         'area' => ['x_axis', 'y_axis'],
         'pie' => ['category', 'value'],
+        'hbar' => ['x_axis', 'y_axis'],
+        'funnel' => ['category', 'value'],
+        'treemap' => ['category', 'value'],
+        'radar' => ['category', 'value'],
+        'scatter' => ['x_axis', 'y_axis', 'category'],
+        'gauge' => ['value', 'max'],
         'table' => ['columns'],
     ];
 

@@ -38,7 +38,7 @@ class FakeDashboardGeneratorTest extends TestCase
             $spec = $generator->generate(new DashboardGenerationInput('tenant-id', 1, $prompt));
 
             $this->assertSame($spec, $validator->validate($spec));
-            $this->assertSame('1.1', $spec->toArray()['version']);
+            $this->assertSame('1.2', $spec->toArray()['version']);
         }
     }
 

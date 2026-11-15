@@ -7,7 +7,7 @@
     "additionalProperties": false,
     "required": ["version", "title", "description", "dataset", "global_filters", "visualizations", "layout"],
     "properties": {
-        "version": { "enum": ["1.0", "1.1"] },
+        "version": { "enum": ["1.0", "1.1", "1.2"] },
         "title": { "type": "string", "minLength": 1, "maxLength": 120 },
         "description": { "type": "string", "maxLength": 500 },
         "dataset": { "$ref": "#/$defs/simpleIdentifier" },
@@ -156,7 +156,7 @@
             "properties": {
                 "key": { "$ref": "#/$defs/simpleIdentifier" },
                 "title": { "type": "string", "minLength": 1, "maxLength": 120 },
-                "type": { "enum": ["kpi", "bar", "line", "area", "pie", "table"] },
+                "type": { "enum": ["kpi", "bar", "line", "area", "pie", "table", "hbar", "funnel", "treemap", "radar", "scatter", "gauge"] },
                 "query": { "$ref": "#/$defs/query" },
                 "display": { "type": "object" },
                 "layout": { "$ref": "#/$defs/visualizationLayout" }
@@ -176,7 +176,7 @@
                     }
                 },
                 {
-                    "if": { "properties": { "type": { "enum": ["bar", "line", "area"] } } },
+                    "if": { "properties": { "type": { "enum": ["bar", "hbar", "line", "area"] } } },
                     "then": {
                         "properties": {
                             "display": {
@@ -192,7 +192,7 @@
                     }
                 },
                 {
-                    "if": { "properties": { "type": { "const": "pie" } } },
+                    "if": { "properties": { "type": { "enum": ["pie", "funnel", "treemap", "radar"] } } },
                     "then": {
                         "properties": {
                             "display": {
@@ -202,6 +202,39 @@
                                 "properties": {
                                     "category": { "$ref": "#/$defs/fieldIdentifier" },
                                     "value": { "$ref": "#/$defs/fieldIdentifier" }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": { "properties": { "type": { "const": "scatter" } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["x_axis", "y_axis", "category"],
+                                "properties": {
+                                    "x_axis": { "$ref": "#/$defs/fieldIdentifier" },
+                                    "y_axis": { "$ref": "#/$defs/fieldIdentifier" },
+                                    "category": { "$ref": "#/$defs/fieldIdentifier" }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": { "properties": { "type": { "const": "gauge" } } },
+                    "then": {
+                        "properties": {
+                            "display": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["value", "max"],
+                                "properties": {
+                                    "value": { "$ref": "#/$defs/fieldIdentifier" },
+                                    "max": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000000000000 }
                                 }
                             }
                         }

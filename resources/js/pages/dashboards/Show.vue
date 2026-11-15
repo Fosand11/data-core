@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppearanceMenu from '@/components/AppearanceMenu.vue';
 import DashboardCanvas from '@/components/dashboard/DashboardCanvas.vue';
 import DashboardActions from '@/components/DashboardActions.vue';
 import DashboardStatusBadge from '@/components/DashboardStatusBadge.vue';
@@ -13,7 +14,9 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { describeFilter } from '@/lib/labels';
 import type {
     BreadcrumbItem,
+    ChartPaletteOption,
     CurrentTenant,
+    DashboardAppearance,
     DashboardDetail,
     DashboardPeriodInfo,
     DashboardVersionEntry,
@@ -30,6 +33,7 @@ const props = defineProps<{
     currentTenant: CurrentTenant;
     tenants: TenantOption[];
     dashboard: DashboardDetail;
+    palettes: ChartPaletteOption[];
     period: DashboardPeriodInfo;
     refinement: RefinementState | null;
     versions: DashboardVersionEntry[];
@@ -113,11 +117,40 @@ const periodCaption = computed(() => {
 const printPeriod = computed(() =>
     periodCaption.value.startsWith('Fecha: ') ? periodCaption.value.replace('Fecha: ', 'Periodo: ') : `Periodo: ${periodCaption.value}`,
 );
+// How the dashboard is drawn. Kept locally so a pick shows at once; the server copy replaces it when it arrives.
+const appearance = ref<DashboardAppearance>({ ...props.dashboard.appearance, colors: { ...props.dashboard.appearance.colors } });
+watch(
+    () => props.dashboard.appearance,
+    (saved) => (appearance.value = { ...saved, colors: { ...saved.colors } }),
+    { deep: true },
+);
+const activePalette = computed(() => props.palettes.find((palette) => palette.id === appearance.value.palette) ?? props.palettes[0]);
+
+const saveAppearance = (next: DashboardAppearance) => {
+    const previous = appearance.value;
+
+    appearance.value = next;
+    router.patch(
+        route('dashboards.appearance', { dashboard: props.dashboard.id }),
+        { palette: next.palette, colors: next.colors },
+        {
+            only: ['dashboard'],
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => (appearance.value = previous),
+        },
+    );
+};
+const pickPalette = (palette: string) => saveAppearance({ ...appearance.value, palette });
+const pickColor = (key: string, slot: number) => saveAppearance({ ...appearance.value, colors: { ...appearance.value.colors, [key]: slot } });
+
 const exportContext = computed<ExportContext>(() => ({
     title: props.dashboard.title,
     description: props.dashboard.description,
     periodLabel: periodCaption.value,
     datasetName: props.dashboard.dataset?.name,
+    palette: activePalette.value,
+    colors: appearance.value.colors,
 }));
 
 const refreshing = ref(false);
@@ -283,11 +316,28 @@ onUnmounted(stopPolling);
                             {{ describeFilter(filter) }}
                         </StatusBadge>
                     </div>
+                    <AppearanceMenu
+                        v-if="dashboard.can.update"
+                        class="print:hidden"
+                        :palettes="palettes"
+                        :current="appearance.palette"
+                        :disabled="previewing"
+                        @select="pickPalette"
+                    />
                     <ExportMenu class="ml-auto" :spec="shownSpec" :data="shownData" :context="exportContext" :disabled="previewing" />
                 </div>
 
                 <div :class="['transition-opacity duration-200', refreshing ? 'opacity-50' : '']" :aria-busy="refreshing">
-                    <DashboardCanvas :key="previewing ? 'proposal' : 'current'" :spec="shownSpec" :data="shownData" :export-context="exportContext" />
+                    <DashboardCanvas
+                        :key="previewing ? 'proposal' : 'current'"
+                        :spec="shownSpec"
+                        :data="shownData"
+                        :export-context="exportContext"
+                        :palette="activePalette"
+                        :colors="appearance.colors"
+                        :can-style="dashboard.can.update && !previewing"
+                        @color="pickColor"
+                    />
                 </div>
 
                 <VersionHistory

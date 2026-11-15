@@ -33,7 +33,14 @@ En **Datos** subes un archivo `.csv` o `.xlsx` (hasta 5 MB, 20.000 filas y 20 co
 - **Sin SQL generado**: las filas viven en columnas tipadas de una sola tabla y el ejecutor las consulta con el mismo catálogo cerrado que los datos de ejemplo.
 - **Aislado por organización** como todo lo demás: el conjunto de datos de otra organización responde 404.
 
-### 4. Claro y oscuro, buscador y exportación
+### 4. Muchos tipos de visual y el color que quieras
+
+Además de barras, línea, área y circular, la IA puede elegir **barras horizontales, embudo, mapa de árbol, radar, dispersión y medidor** según la pregunta («¿cómo se reparte el gasto por país?», «¿cuánto se parece el ingreso a la edad?»). Con el botón **Colores** cambias la paleta de todo el dashboard y, en cada gráfica de una sola serie, eliges cuál de los seis colores usa.
+
+- **Siete paletas validadas** para modo claro y oscuro: se comprobó la luminosidad, el croma, la separación entre vecinos para daltonismo y el contraste con la superficie. Solo se guarda un identificador de paleta y un número de color, nunca un color libre.
+- **La IA no decide los colores**: viven aparte del `DashboardSpec` (versión 1.2), así que un cambio pedido a la IA nunca los pisa.
+
+### 5. Claro y oscuro, buscador y exportación
 
 ![Dashboard de ingresos y productos más vendidos](.github/images/dashboard.webp)
 
@@ -122,8 +129,12 @@ flowchart LR
   `TENANCY_SEED_DEMO_DATA`) y un ejecutor que traduce el spec validado a
   consultas estructuradas, sin SQL generado por la IA y siempre acotado al
   tenant actual.
-- Gráficas reales (KPI, barras, línea, área, circular y tabla) con ECharts, en
-  claro y oscuro, con vista de tabla accesible para cada gráfica.
+- Doce tipos de visual con ECharts, en claro y oscuro y con vista de tabla accesible:
+  indicador, barras, barras horizontales, línea, área, circular, embudo, mapa de
+  árbol (treemap), radar, dispersión, medidor y tabla.
+- Colores a tu gusto: siete paletas para todo el dashboard (una de ellas pensada
+  para daltonismo) y un color propio para cada gráfica de una sola serie. Se guarda
+  en el dashboard, no lo toca la IA y se respeta al exportar (PNG, PDF y PowerPoint).
 - Proveedor Gemini (plan gratuito de Google AI Studio) además de `fake`/`openai`.
 - Buscador `⌘K` / `Ctrl+K`: busca dashboards de tu organización, ejecuta acciones
   y convierte una frase en un dashboard nuevo.
@@ -278,8 +289,9 @@ comprueba el vigente en la documentación de Gemini antes de fijarlo.
 ## Dependencias del frontend añadidas con justificación
 
 - `echarts` y `vue-echarts`: el framework no incluye gráficas. ECharts cubre los
-  tipos del contrato (barras, línea, área, circular) con accesibilidad y
-  tooltips; se importa por módulos y se carga de forma diferida.
+  tipos del contrato (barras, línea, área, circular, embudo, treemap, radar,
+  dispersión y medidor) con accesibilidad y tooltips; se importa por módulos y se
+  carga de forma diferida.
 - `pptxgenjs`: generar un `.pptx` real en el navegador no tiene equivalente en el
   framework. Solo depende de `jszip`, no tiene scripts de instalación y se carga
   de forma diferida únicamente al exportar a PowerPoint.

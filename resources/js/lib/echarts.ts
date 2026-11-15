@@ -1,13 +1,28 @@
 import type { ChartTheme } from '@/composables/useChartTheme';
 import { buildChartOption } from '@/lib/chartOptions';
 import type { DashboardVisualization, VisualizationResult } from '@/types';
-import { BarChart, LineChart, PieChart } from 'echarts/charts';
-import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
+import { BarChart, FunnelChart, GaugeChart, LineChart, PieChart, RadarChart, ScatterChart, TreemapChart } from 'echarts/charts';
+import { GridComponent, LegendComponent, RadarComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 
 // Only the modules the supported chart types need; keeps the bundle small. Imported by the live chart and by exports.
-echarts.use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent, CanvasRenderer]);
+echarts.use([
+    BarChart,
+    LineChart,
+    PieChart,
+    FunnelChart,
+    TreemapChart,
+    RadarChart,
+    ScatterChart,
+    GaugeChart,
+    GridComponent,
+    LegendComponent,
+    RadarComponent,
+    TitleComponent,
+    TooltipComponent,
+    CanvasRenderer,
+]);
 
 export interface ChartImageOptions {
     width: number;
@@ -15,6 +30,8 @@ export interface ChartImageOptions {
     theme: ChartTheme;
     /** Device pixel ratio; 2 gives a sharp image for slides and printing. */
     pixelRatio?: number;
+    /** The palette slot the author chose for this chart, when it draws a single series. */
+    accent?: number;
 }
 
 /**
@@ -29,7 +46,7 @@ export function renderChartImage(visualization: DashboardVisualization, result: 
     const chart = echarts.init(container, null, { renderer: 'canvas', width: options.width, height: options.height });
 
     try {
-        chart.setOption({ ...buildChartOption(visualization, result, options.theme), animation: false });
+        chart.setOption({ ...buildChartOption(visualization, result, options.theme, options.accent), animation: false });
 
         return chart.getDataURL({ type: 'png', pixelRatio: options.pixelRatio ?? 2, backgroundColor: options.theme.surface });
     } finally {

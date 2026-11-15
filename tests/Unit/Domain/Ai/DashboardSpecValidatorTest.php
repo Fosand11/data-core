@@ -116,7 +116,8 @@ class DashboardSpecValidatorTest extends TestCase
         $types = array_column($this->validSpec['visualizations'], 'type');
 
         $this->assertContains('pie', $types);
-        $this->assertSame('1.1', $this->validSpec['version']);
+        $this->assertSame('1.2', $this->validSpec['version']);
+        $this->validSpec['version'] = '1.1';
 
         $this->validSpec['visualizations'][3]['type'] = 'area';
         $spec = DashboardSpec::fromArray($this->validSpec);

@@ -86,7 +86,7 @@ class GeminiDashboardGenerationTest extends TestCase
         (new GenerateDashboardJob($generation->getKey()))->handle(app(DashboardGenerator::class), new DashboardSpecValidator);
 
         $this->assertSame(DashboardStatus::Ready, $dashboard->refresh()->status);
-        $this->assertSame('1.1', $dashboard->spec_version);
+        $this->assertSame('1.2', $dashboard->spec_version);
         $this->assertSame(DashboardGenerationStatus::Completed, $generation->refresh()->status);
         $this->assertSame('gemini-test-model', $generation->model);
 

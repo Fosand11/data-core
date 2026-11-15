@@ -202,7 +202,7 @@ class DashboardGenerationTest extends TestCase
 
         $this->assertTrue($observingGenerator->observedGenerating);
         $this->assertSame(DashboardStatus::Ready, $dashboard->refresh()->status);
-        $this->assertSame('1.1', $dashboard->spec_version);
+        $this->assertSame('1.2', $dashboard->spec_version);
         $this->assertNotNull($dashboard->dashboard_spec);
         $this->assertSame(DashboardGenerationStatus::Completed, $generation->refresh()->status);
         $this->assertSame($dashboard->dashboard_spec, $generation->validated_spec);
