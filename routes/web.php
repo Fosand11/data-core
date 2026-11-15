@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified', 'current_tenant'])->group(function () {
     Route::delete('dashboards/{dashboard}', [DashboardManagementController::class, 'destroy'])->name('dashboards.destroy');
     Route::post('dashboards/{dashboard}/duplicate', [DashboardActionController::class, 'duplicate'])->name('dashboards.duplicate');
     Route::patch('dashboards/{dashboard}/pin', [DashboardActionController::class, 'pin'])->name('dashboards.pin');
+    Route::patch('dashboards/{dashboard}/appearance', [DashboardActionController::class, 'appearance'])->name('dashboards.appearance');
     Route::post('dashboards/{dashboard}/retry', [DashboardActionController::class, 'retry'])
         ->middleware('throttle:dashboard-generation')
         ->name('dashboards.retry');

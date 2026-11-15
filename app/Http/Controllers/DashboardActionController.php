@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Domain\Dashboards\Actions\DuplicateDashboard;
 use App\Domain\Dashboards\Actions\RetryDashboardGeneration;
 use App\Domain\Dashboards\Actions\SetDashboardPin;
+use App\Domain\Dashboards\Actions\UpdateDashboardAppearance;
 use App\Domain\Dashboards\Models\Dashboard;
 use App\Http\Requests\Dashboards\PinDashboardRequest;
+use App\Http\Requests\Dashboards\UpdateDashboardAppearanceRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -29,6 +31,13 @@ class DashboardActionController extends Controller
         $setPin->execute($request->user(), $dashboard, $pinned);
 
         return back()->with('status', $pinned ? 'Fijado en tu barra lateral.' : 'Ya no está fijado.');
+    }
+
+    public function appearance(UpdateDashboardAppearanceRequest $request, Dashboard $dashboard, UpdateDashboardAppearance $update): RedirectResponse
+    {
+        $update->execute($request->user(), $dashboard, $request->validated('palette'), $request->validated('colors'));
+
+        return back();
     }
 
     public function retry(Request $request, Dashboard $dashboard, RetryDashboardGeneration $retry): RedirectResponse

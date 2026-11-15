@@ -20,6 +20,7 @@ use App\Domain\Dashboards\Models\DashboardGeneration;
 use App\Domain\Dashboards\Models\Dataset;
 use App\Domain\Dashboards\Models\DemoSale;
 use App\Domain\Dashboards\Queries\DashboardQueryExecutor;
+use App\Domain\Dashboards\Support\ChartPalettes;
 use App\Domain\Dashboards\Support\DashboardVersions;
 use App\Domain\Dashboards\Support\DatasetCatalogResolver;
 use App\Domain\Tenancy\CurrentTenant;
@@ -131,6 +132,7 @@ class DashboardManagementController extends Controller
                 'provider' => $dashboard->provider,
                 'spec_version' => $dashboard->spec_version,
                 'dashboard_spec' => $dashboard->dashboard_spec,
+                'appearance' => $this->appearancePayload($dashboard),
                 'can' => [
                     'update' => Gate::allows('update', $dashboard),
                     'duplicate' => Gate::allows('duplicate', $dashboard),
@@ -152,6 +154,7 @@ class DashboardManagementController extends Controller
                 ],
             ],
             // Lazy: evaluated on full visits and when requested by partial reloads.
+            'palettes' => ChartPalettes::forPage(),
             'period' => $this->periodPayload($period, $catalog),
             'refinement' => $refinement === null ? null : $this->refinementPayload($refinement, $versions->currentNumber($dashboard)),
             'versions' => $this->versionsPayload($dashboard),
@@ -172,6 +175,22 @@ class DashboardManagementController extends Controller
         $delete->execute($request->user(), $dashboard);
 
         return to_route('dashboards.index')->with('status', 'Dashboard eliminado.');
+    }
+
+    /**
+     * The palette id and per-chart colour slots stored for this dashboard, or the defaults.
+     *
+     * @return array{palette: string, colors: array<string, int>}
+     */
+    private function appearancePayload(Dashboard $dashboard): array
+    {
+        $stored = is_array($dashboard->appearance) ? $dashboard->appearance : [];
+        $palette = $stored['palette'] ?? null;
+
+        return [
+            'palette' => is_string($palette) && ChartPalettes::has($palette) ? $palette : ChartPalettes::DEFAULT,
+            'colors' => is_array($stored['colors'] ?? null) ? $stored['colors'] : [],
+        ];
     }
 
     /**

@@ -31,6 +31,7 @@ class Dashboard extends Model
         'status',
         'spec_version',
         'dashboard_spec',
+        'appearance',
         'provider',
         'error_message',
         'generation_started_at',
@@ -158,6 +159,7 @@ class Dashboard extends Model
         return [
             'status' => DashboardStatus::class,
             'dashboard_spec' => 'array',
+            'appearance' => 'array',
             'generation_started_at' => 'datetime',
             'generation_completed_at' => 'datetime',
         ];
